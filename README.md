@@ -25,7 +25,7 @@ Open http://localhost:3000/
 - **Real-time sync**: WebSocket-based instant updates
 - **LAN support**: Access from any device on same network
 
-## Project Structure
+## Structure
 
 ```
 display-sync/
@@ -35,20 +35,24 @@ display-sync/
 │   ├── display.html
 │   ├── css/styles.css
 │   └── js/
-│       ├── control.js
-│       └── display.js
 └── custom/              # Add custom HTML here
+```
+
+## Roadmap
+
+**Canvas mode** - Arrange displays spatially, span content across them like a video wall.
+
+```
+┌─────────┬─────────┬─────────┐
+│   D1    │   D2    │   D3    │
+└─────────┴─────────┴─────────┘
+      ↑ drop image/video ↑
 ```
 
 ## LAN Access
 
-Server prints your IP on startup. For Windows firewall:
+Server prints your IP on startup. Windows firewall:
 
 ```powershell
 New-NetFirewallRule -DisplayName "Display Sync" -Direction Inbound -LocalPort 3000,3001 -Protocol TCP -Action Allow
 ```
-
-## Requirements
-
-- Python 3.8+
-- websockets
