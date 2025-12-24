@@ -47,12 +47,15 @@ New-NetFirewallRule -DisplayName "Display Sync - WS In" -Direction Inbound -Loca
 
 ## Features
 
-- **6 Scenes**: Gradient, Waves, Particles, Matrix, Solid Color, Text
+- **Built-in Scenes**: Gradient, Waves, Particles, Matrix, Solid Color, Text
+- **Custom HTML Broadcast**: Paste or upload any HTML and broadcast to all displays
+- **Library System**: Save custom HTML to disk, load and manage saved content
+- **Unlimited Displays**: Set any number of displays (d1, d2, d3... no limit)
 - **12 Colors**: Quick color picker
 - **Speed/Intensity**: Adjustable animation settings
 - **Text Messages**: Send text to all displays
-- **Real-time Sync**: All displays update instantly
-- **LAN Support**: Works across any device on the same network
+- **Real-time Sync**: All displays update instantly via WebSocket
+- **LAN Support**: Dynamic IP detection for accessing from other devices
 
 ## Controls
 
@@ -62,6 +65,17 @@ New-NetFirewallRule -DisplayName "Display Sync - WS In" -Direction Inbound -Loca
 | Fullscreen | Double-click any display |
 | Close modal | Click outside or press Escape |
 
+## Custom HTML
+
+Switch to "Custom HTML" mode in the sidebar to:
+
+1. **Paste HTML** directly into the editor
+2. **Upload .html files** using the Upload button
+3. **Broadcast** to all connected displays instantly
+4. **Save** to library for later use
+
+Supports CSS, JavaScript, Canvas, SVG, and animations.
+
 ## Project Structure
 
 ```
@@ -70,6 +84,8 @@ display-sync/
 ├── public/
 │   ├── control.html    # Control dashboard
 │   └── display.html    # Display client
+├── uploads/            # Saved HTML library (auto-created)
+├── LICENSE
 └── README.md
 ```
 
