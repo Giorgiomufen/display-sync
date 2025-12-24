@@ -32,91 +32,114 @@ var connectedDisplays = [];
 var library = [];
 var serverInfo = { lanIP: "", httpPort: 3000 };
 var pendingDeleteId = null;
-var currentSelection = { type: "builtin", id: "gradient" };
+var currentMode = "builtin"; // "builtin" or "custom"
 
 // Helpers
 function $(id) {
   return document.getElementById(id);
 }
 
-// UI Initialization
-function initUI() {
-  COLORS.forEach(function(c) {
-    var d = document.createElement("div");
-    d.className = "color-btn" + (c === state.color ? " active" : "");
-    d.style.background = c;
-    d.onclick = function() { selectColor(c); };
-    $("colorGrid").appendChild(d);
-  });
-  updateLibraryList();
-}
+// Build scene grid with built-in + custom items
+function buildSceneGrid() {
+  var grid = $("sceneGrid");
+  grid.innerHTML = "";
 
-// Library
-function updateLibraryList() {
-  var l = $("libraryList");
-  l.innerHTML = "";
-
-  // Built-in section
-  l.innerHTML += '<div class="library-divider">Built-in</div>';
+  // Built-in scenes
   SCENES.forEach(function(s) {
     var d = document.createElement("div");
-    d.className = "library-item builtin" + (currentSelection.type === "builtin" && currentSelection.id === s.id ? " active" : "");
-    d.innerHTML = '<span class="icon">' + s.icon + '</span><span class="name">' + s.name + '</span>';
-    d.onclick = function() { selectBuiltin(s.id, s.name); };
-    l.appendChild(d);
+    d.className = "scene" + (state.mode === "builtin" && state.scene === s.id ? " active" : "");
+    d.dataset.type = "builtin";
+    d.dataset.scene = s.id;
+    d.innerHTML = '<div class="scene-icon">' + s.icon + '</div><div class="scene-name">' + s.name + '</div>';
+    d.onclick = function() { selectBuiltinScene(s.id); };
+    grid.appendChild(d);
   });
 
-  // Custom section
-  if (library.length > 0) {
-    l.innerHTML += '<div class="library-divider">Custom</div>';
-    library.forEach(function(item) {
-      var d = document.createElement("div");
-      d.className = "library-item" + (currentSelection.type === "custom" && currentSelection.id === item.id ? " active" : "");
-      d.innerHTML = '<span class="icon">&#128196;</span><span class="name">' + item.name + '</span><span class="delete">x</span>';
-      d.querySelector(".name").onclick = function() { loadFromLibrary(item.id, item.name); };
-      d.querySelector(".delete").onclick = function(e) { e.stopPropagation(); confirmDelete(item.id, item.name); };
-      l.appendChild(d);
-    });
-  }
-
-  // New button
-  l.innerHTML += '<div class="library-divider">New</div>';
-  var newBtn = document.createElement("div");
-  newBtn.className = "library-item";
-  newBtn.innerHTML = '<span class="icon">+</span><span class="name">Create Custom HTML</span>';
-  newBtn.onclick = function() { showCustomEditor(); };
-  l.appendChild(newBtn);
+  // Custom items from library
+  library.forEach(function(item) {
+    var d = document.createElement("div");
+    d.className = "scene custom-scene";
+    d.dataset.type = "custom";
+    d.dataset.id = item.id;
+    d.innerHTML = '<div class="scene-icon">&#128196;</div><div class="scene-name">' + item.name + '</div><span class="scene-delete" title="Delete">x</span>';
+    d.querySelector(".scene-name").onclick = function() { loadAndBroadcastCustom(item.id); };
+    d.querySelector(".scene-delete").onclick = function(e) {
+      e.stopPropagation();
+      confirmDelete(item.id, item.name);
+    };
+    grid.appendChild(d);
+  });
 }
 
-// Selection handlers
-function selectBuiltin(id, name) {
-  currentSelection = { type: "builtin", id: id };
+// Select built-in scene
+function selectBuiltinScene(sceneId) {
+  currentMode = "builtin";
   state.mode = "builtin";
-  state.scene = id;
-  $("modeTitle").textContent = name;
+  state.scene = sceneId;
+
+  // Update UI
+  document.querySelectorAll(".scene").forEach(function(el) {
+    el.classList.remove("active");
+    if (el.dataset.type === "builtin" && el.dataset.scene === sceneId) {
+      el.classList.add("active");
+    }
+  });
+
   $("builtinControls").style.display = "block";
   $("customControls").style.display = "none";
-  updateLibraryList();
+
   broadcast();
 }
 
+// Load custom item and broadcast
+function loadAndBroadcastCustom(id) {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: "load_from_library", id: id }));
+  }
+
+  currentMode = "custom";
+  $("builtinControls").style.display = "none";
+  $("customControls").style.display = "block";
+
+  // Remove active from all scenes
+  document.querySelectorAll(".scene").forEach(function(el) {
+    el.classList.remove("active");
+  });
+}
+
+// Show custom editor for new HTML
 function showCustomEditor() {
-  currentSelection = { type: "custom", id: null };
-  $("modeTitle").textContent = "Custom HTML";
+  currentMode = "custom";
   $("builtinControls").style.display = "none";
   $("customControls").style.display = "block";
   $("htmlEditor").value = "";
   $("htmlName").value = "";
-  updateLibraryList();
-  updateDisplaysList2();
+
+  document.querySelectorAll(".scene").forEach(function(el) {
+    el.classList.remove("active");
+  });
 }
 
+// Color selection
 function selectColor(c) {
   state.color = c;
   document.querySelectorAll(".color-btn").forEach(function(el) {
     el.classList.toggle("active", el.style.background === c);
   });
   broadcast();
+}
+
+// Build color grid
+function buildColorGrid() {
+  var grid = $("colorGrid");
+  grid.innerHTML = "";
+  COLORS.forEach(function(c) {
+    var d = document.createElement("div");
+    d.className = "color-btn" + (c === state.color ? " active" : "");
+    d.style.background = c;
+    d.onclick = function() { selectColor(c); };
+    grid.appendChild(d);
+  });
 }
 
 // Preview & Displays
@@ -130,26 +153,10 @@ function updatePreview() {
     p.appendChild(d);
   }
   updateDisplaysList();
-  updateDisplaysList2();
 }
 
 function updateDisplaysList() {
   var l = $("displaysList");
-  if (!l) return;
-  l.innerHTML = "";
-  for (var i = 1; i <= state.displayCount; i++) {
-    var c = connectedDisplays.indexOf(i) >= 0;
-    var a = document.createElement("a");
-    a.className = "display-link" + (c ? " connected" : "");
-    a.href = "/d" + i;
-    a.target = "_blank";
-    a.innerHTML = '<span>Display ' + i + '</span><span class="status">' + (c ? "Connected" : "Open") + '</span>';
-    l.appendChild(a);
-  }
-}
-
-function updateDisplaysList2() {
-  var l = $("displaysList2");
   if (!l) return;
   l.innerHTML = "";
   for (var i = 1; i <= state.displayCount; i++) {
@@ -184,18 +191,6 @@ function saveToLibrary() {
   if (h && ws && ws.readyState === 1) {
     ws.send(JSON.stringify({ type: "save_to_library", html: h, name: n }));
   }
-}
-
-function loadFromLibrary(id, name) {
-  currentSelection = { type: "custom", id: id };
-  $("modeTitle").textContent = name;
-  $("builtinControls").style.display = "none";
-  $("customControls").style.display = "block";
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify({ type: "load_from_library", id: id }));
-  }
-  updateLibraryList();
-  updateDisplaysList2();
 }
 
 function confirmDelete(id, name) {
@@ -249,7 +244,7 @@ function connect() {
       if (msg.connectedDisplays) connectedDisplays = msg.connectedDisplays;
       if (msg.library) {
         library = msg.library;
-        updateLibraryList();
+        buildSceneGrid();
       }
       updatePreview();
     }
@@ -261,7 +256,7 @@ function connect() {
 
     if (msg.type === "library_update") {
       library = msg.library || [];
-      updateLibraryList();
+      buildSceneGrid();
     }
   };
 }
@@ -290,14 +285,16 @@ function bindEvents() {
 
   $("sendText").onclick = function() {
     state.text = $("textInput").value;
-    selectBuiltin("text", "Text");
+    selectBuiltinScene("text");
   };
 
   $("broadcastHtml").onclick = broadcastHtml;
   $("saveLibrary").onclick = saveToLibrary;
   $("confirmDelete").onclick = deleteFromLibrary;
 
-  $("uploadFile").onclick = function() {
+  $("newCustomBtn").onclick = showCustomEditor;
+
+  $("uploadFileBtn").onclick = function() {
     $("fileInput").click();
   };
 
@@ -306,6 +303,7 @@ function bindEvents() {
     if (f) {
       var r = new FileReader();
       r.onload = function(ev) {
+        showCustomEditor();
         $("htmlEditor").value = ev.target.result;
         $("htmlName").value = f.name.replace(/\.[^.]+$/, "");
       };
@@ -334,7 +332,8 @@ function bindEvents() {
 
 // Initialize
 function init() {
-  initUI();
+  buildColorGrid();
+  buildSceneGrid();
   bindEvents();
   updatePreview();
   connect();
