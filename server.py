@@ -20,7 +20,7 @@ except ImportError:
 PORT_HTTP = 3000
 PORT_WS = 3001
 BASE_DIR = Path(__file__).parent
-UPLOADS_DIR = BASE_DIR / "uploads"
+CUSTOM_DIR = BASE_DIR / "custom"
 
 
 class State:
@@ -88,9 +88,9 @@ def get_connected_displays():
 
 def get_library():
     """Get list of saved HTML files."""
-    UPLOADS_DIR.mkdir(exist_ok=True)
+    CUSTOM_DIR.mkdir(exist_ok=True)
     items = []
-    for f in UPLOADS_DIR.glob("*.html"):
+    for f in CUSTOM_DIR.glob("*.html"):
         meta_file = f.with_suffix(".json")
         meta = {"name": f.stem, "created": f.stat().st_mtime}
         if meta_file.exists():
@@ -104,10 +104,10 @@ def get_library():
 
 def save_to_library(name, html_content):
     """Save HTML content to library."""
-    UPLOADS_DIR.mkdir(exist_ok=True)
+    CUSTOM_DIR.mkdir(exist_ok=True)
     file_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}"
-    html_file = UPLOADS_DIR / f"{file_id}.html"
-    meta_file = UPLOADS_DIR / f"{file_id}.json"
+    html_file = CUSTOM_DIR / f"{file_id}.html"
+    meta_file = CUSTOM_DIR / f"{file_id}.json"
     html_file.write_text(html_content, encoding="utf-8")
     meta_file.write_text(json.dumps({"name": name, "created": time.time()}), encoding="utf-8")
     return file_id
@@ -115,8 +115,8 @@ def save_to_library(name, html_content):
 
 def load_from_library(file_id):
     """Load HTML content from library."""
-    html_file = UPLOADS_DIR / f"{file_id}.html"
-    meta_file = UPLOADS_DIR / f"{file_id}.json"
+    html_file = CUSTOM_DIR / f"{file_id}.html"
+    meta_file = CUSTOM_DIR / f"{file_id}.json"
     if html_file.exists():
         name = file_id
         if meta_file.exists():
@@ -130,8 +130,8 @@ def load_from_library(file_id):
 
 def delete_from_library(file_id):
     """Delete HTML content from library."""
-    html_file = UPLOADS_DIR / f"{file_id}.html"
-    meta_file = UPLOADS_DIR / f"{file_id}.json"
+    html_file = CUSTOM_DIR / f"{file_id}.html"
+    meta_file = CUSTOM_DIR / f"{file_id}.json"
     deleted = False
     if html_file.exists():
         html_file.unlink()
@@ -311,7 +311,7 @@ def run_http_server():
 
 async def main():
     """Main entry point."""
-    UPLOADS_DIR.mkdir(exist_ok=True)
+    CUSTOM_DIR.mkdir(exist_ok=True)
     ip = get_local_ip()
 
     print(f"""
@@ -324,7 +324,7 @@ async def main():
 
   LAN Access:     http://{ip}:{PORT_HTTP}/
 
-  Library:        {UPLOADS_DIR}
+  Library:        {CUSTOM_DIR}
 
 {'='*50}
 """)

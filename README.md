@@ -84,7 +84,7 @@ display-sync/
 ├── public/
 │   ├── control.html    # Control dashboard
 │   └── display.html    # Display client
-├── uploads/            # Saved HTML library (auto-created)
+├── custom/             # Custom HTML files (add your own here)
 ├── LICENSE
 └── README.md
 ```
