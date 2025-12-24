@@ -104,3 +104,4 @@ Remove-NetFirewallRule -DisplayName "Display Sync*"
 ```
 
 Delete the project folder to fully remove.
+
