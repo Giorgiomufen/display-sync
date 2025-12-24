@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Sync</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #16213e 100%);
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        overflow: hidden;
+      }
+      .container {
+        text-align: center;
+        z-index: 10;
+      }
+      h1 {
+        font-size: 4rem;
+        font-weight: 300;
+        background: linear-gradient(90deg, #00d4ff, #7b2cbf, #ff006e, #00d4ff);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradient 4s ease infinite;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .subtitle {
+        color: rgba(255,255,255,0.6);
+        font-size: 1.2rem;
+        margin-top: 1rem;
+        letter-spacing: 0.5em;
+        animation: fadeIn 2s ease;
+      }
+      .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.6;
+        animation: float 8s ease-in-out infinite;
+      }
+      .orb1 { width: 400px; height: 400px; background: #7b2cbf; top: -100px; left: -100px; }
+      .orb2 { width: 300px; height: 300px; background: #00d4ff; bottom: -50px; right: -50px; animation-delay: -4s; }
+      .orb3 { width: 200px; height: 200px; background: #ff006e; top: 50%; left: 60%; animation-delay: -2s; }
+      .rings {
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 50%;
+        animation: spin 20s linear infinite;
+      }
+      .rings::before, .rings::after {
+        content: '';
+        position: absolute;
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 50%;
+      }
+      .rings::before { inset: 40px; animation: spin 15s linear infinite reverse; }
+      .rings::after { inset: 80px; animation: spin 25s linear infinite; }
+      .pulse-dot {
+        width: 12px;
+        height: 12px;
+        background: #00d4ff;
+        border-radius: 50%;
+        margin: 2rem auto 0;
+        animation: pulse 2s ease-in-out infinite;
+        box-shadow: 0 0 20px #00d4ff, 0 0 40px #00d4ff;
+      }
+      @keyframes gradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+      @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(30px, -30px) scale(1.1); } }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+  </head>
+  <body>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+    <div class="rings"></div>
+    <div class="container">
+      <h1>Display Sync</h1>
+      <p class="subtitle">Connected</p>
+      <div class="pulse-dot"></div>
+    </div>
+  </body>
+  </html>
