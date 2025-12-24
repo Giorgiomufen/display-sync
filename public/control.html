@@ -4,90 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Display Control</title>
-  <style>
-    :root { --bg:#0a0a0f; --surface:#111; --surface-hover:#1a1a1a; --border:#222; --text:#fff; --text-muted:#666; --accent:#3b82f6; --success:#22c55e; --error:#ef4444; }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh; }
-    .layout { display:grid; grid-template-columns:240px 1fr; min-height:100vh; }
-    .sidebar { background:var(--surface); border-right:1px solid var(--border); padding:20px; display:flex; flex-direction:column; }
-    .main { padding:25px; overflow-y:auto; }
-    .logo { font-size:1rem; font-weight:500; margin-bottom:25px; color:var(--text-muted); }
-    .nav-section { margin-bottom:20px; }
-    .nav-section h3 { font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
-    .library-list { flex:1; overflow-y:auto; }
-    .library-item { display:flex; align-items:center; padding:8px 10px; border-radius:5px; cursor:pointer; font-size:0.75rem; color:var(--text-muted); transition:all 0.2s; gap:8px; }
-    .library-item:hover { background:var(--surface-hover); color:var(--text); }
-    .library-item.active { background:rgba(59,130,246,0.15); color:var(--accent); }
-    .library-item .icon { font-size:1rem; width:24px; text-align:center; }
-    .library-item .name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .library-item .delete { opacity:0; color:var(--error); padding:2px 5px; cursor:pointer; font-size:0.7rem; }
-    .library-item:hover .delete { opacity:0.7; }
-    .library-item .delete:hover { opacity:1; }
-    .library-item.builtin .delete { display:none; }
-    .library-divider { font-size:0.6rem; color:var(--text-muted); padding:12px 10px 6px; text-transform:uppercase; letter-spacing:1px; }
-    .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
-    .top-bar h1 { font-size:1.1rem; font-weight:500; }
-    .top-right { display:flex; gap:8px; align-items:center; }
-    .badge { background:var(--surface); padding:5px 10px; border-radius:15px; font-size:0.65rem; display:flex; align-items:center; gap:5px; }
-    .badge .dot { width:5px; height:5px; border-radius:50%; background:var(--error); }
-    .badge.connected .dot { background:var(--success); }
-    .icon-btn { width:28px; height:28px; border-radius:50%; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); font-size:0.8rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-    .icon-btn:hover { background:var(--surface-hover); color:var(--text); }
-    .preview { display:flex; gap:3px; justify-content:center; padding:12px; background:var(--surface); border-radius:8px; margin-bottom:20px; flex-wrap:wrap; }
-    .preview-screen { flex:1; min-width:35px; max-width:70px; aspect-ratio:16/9; background:var(--surface-hover); border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:0.5rem; color:#444; }
-    .preview-screen.connected { border:2px solid var(--success); }
-    .sections { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
-    .section { background:var(--surface); border-radius:8px; padding:12px; }
-    .section h2 { font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
-    .color-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; }
-    .color-btn { aspect-ratio:1; border-radius:5px; border:2px solid transparent; cursor:pointer; }
-    .color-btn:hover { transform:scale(1.1); }
-    .color-btn.active { border-color:var(--text); }
-    .slider-group { margin-bottom:10px; }
-    .slider-group label { display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:5px; }
-    input[type="range"] { width:100%; height:4px; border-radius:2px; background:var(--border); -webkit-appearance:none; }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--accent); cursor:pointer; }
-    .text-input { width:100%; background:var(--surface-hover); border:1px solid var(--border); color:var(--text); padding:8px; border-radius:5px; font-size:0.85rem; margin-bottom:6px; }
-    .text-input:focus { outline:none; border-color:var(--accent); }
-    .number-input { width:45px; background:var(--surface-hover); border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:4px; font-size:0.75rem; text-align:center; }
-    .btn { background:var(--accent); color:var(--text); border:none; padding:7px 14px; border-radius:4px; cursor:pointer; font-size:0.75rem; }
-    .btn:hover { filter:brightness(1.1); }
-    .btn-secondary { background:var(--surface-hover); border:1px solid var(--border); }
-    .btn-success { background:var(--success); }
-    .displays-list { display:flex; flex-direction:column; gap:6px; max-height:150px; overflow-y:auto; }
-    .display-link { display:flex; justify-content:space-between; align-items:center; background:var(--surface-hover); padding:8px 12px; border-radius:5px; text-decoration:none; color:var(--text-muted); font-size:0.8rem; transition:all 0.2s; }
-    .display-link:hover { background:var(--border); color:var(--text); }
-    .display-link .status { font-size:0.7rem; }
-    .display-link.connected .status { color:var(--success); }
-    .editor-container { background:var(--surface); border-radius:8px; overflow:hidden; margin-bottom:12px; }
-    .editor-header { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); gap:8px; }
-    .editor-header input { background:transparent; border:none; color:var(--text); font-size:0.9rem; flex:1; }
-    .editor-header input:focus { outline:none; }
-    .editor-actions { display:flex; gap:6px; }
-    .editor-textarea { width:100%; min-height:280px; background:#0d0d12; color:#e2e8f0; border:none; padding:12px; font-family:'SF Mono',Monaco,monospace; font-size:0.8rem; line-height:1.5; resize:vertical; }
-    .editor-textarea:focus { outline:none; }
-    .editor-footer { padding:10px 12px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-    .editor-footer .hint { font-size:0.65rem; color:var(--text-muted); }
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; visibility:hidden; transition:all 0.3s; }
-    .modal-overlay.show { opacity:1; visibility:visible; }
-    .modal { background:var(--surface); border:1px solid var(--border); border-radius:10px; max-width:400px; width:90%; }
-    .modal-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-    .modal-header h2 { font-size:0.95rem; font-weight:500; }
-    .modal-close { background:transparent; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer; }
-    .modal-body { padding:16px; }
-    .modal-body p { font-size:0.85rem; margin-bottom:16px; color:var(--text-muted); }
-    .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
-    .step { display:flex; gap:10px; margin-bottom:14px; }
-    .step-num { width:24px; height:24px; border-radius:50%; background:var(--accent); color:var(--text); font-size:0.7rem; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .step-content h3 { font-size:0.8rem; font-weight:500; margin-bottom:3px; }
-    .step-content p { font-size:0.75rem; color:var(--text-muted); }
-    .step-content code { display:inline-block; background:#1a1a2e; padding:5px 8px; border-radius:5px; font-family:monospace; font-size:0.75rem; color:#38bdf8; margin-top:5px; }
-    .btn-danger { background:var(--error); }
-    @media (max-width:768px) { .layout { grid-template-columns:1fr; } .sidebar { display:none; } }
-  </style>
+  <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="control">
   <div class="layout">
+    <!-- Sidebar -->
     <div class="sidebar">
       <div class="logo">Display Sync</div>
       <div class="nav-section" style="flex:1;display:flex;flex-direction:column;">
@@ -100,6 +21,8 @@
         </div>
       </div>
     </div>
+
+    <!-- Main Content -->
     <div class="main">
       <div class="top-bar">
         <h1 id="modeTitle">Gradient</h1>
@@ -108,19 +31,40 @@
           <button class="icon-btn" id="helpBtn">?</button>
         </div>
       </div>
+
       <div class="preview" id="preview"></div>
+
+      <!-- Built-in Controls -->
       <div id="builtinControls">
         <div class="sections">
-          <div class="section"><h2>Color</h2><div class="color-grid" id="colorGrid"></div></div>
+          <div class="section">
+            <h2>Color</h2>
+            <div class="color-grid" id="colorGrid"></div>
+          </div>
           <div class="section">
             <h2>Settings</h2>
-            <div class="slider-group"><label><span>Speed</span><span id="speedVal">1.0</span></label><input type="range" id="speed" min="0.1" max="3" step="0.1" value="1"></div>
-            <div class="slider-group"><label><span>Intensity</span><span id="intensityVal">1.0</span></label><input type="range" id="intensity" min="0.1" max="2" step="0.1" value="1"></div>
+            <div class="slider-group">
+              <label><span>Speed</span><span id="speedVal">1.0</span></label>
+              <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
+            </div>
+            <div class="slider-group">
+              <label><span>Intensity</span><span id="intensityVal">1.0</span></label>
+              <input type="range" id="intensity" min="0.1" max="2" step="0.1" value="1">
+            </div>
           </div>
-          <div class="section"><h2>Text Message</h2><input type="text" class="text-input" id="textInput" placeholder="Enter message..."><button class="btn" style="width:100%;" id="sendText">Send to Displays</button></div>
-          <div class="section"><h2>Displays</h2><div class="displays-list" id="displaysList"></div></div>
+          <div class="section">
+            <h2>Text Message</h2>
+            <input type="text" class="text-input" id="textInput" placeholder="Enter message...">
+            <button class="btn" style="width:100%;" id="sendText">Send to Displays</button>
+          </div>
+          <div class="section">
+            <h2>Displays</h2>
+            <div class="displays-list" id="displaysList"></div>
+          </div>
         </div>
       </div>
+
+      <!-- Custom HTML Controls -->
       <div id="customControls" style="display:none;">
         <div class="editor-container">
           <div class="editor-header">
@@ -138,136 +82,66 @@
           </div>
         </div>
         <div class="sections">
-          <div class="section"><h2>Displays</h2><div class="displays-list" id="displaysList2"></div></div>
+          <div class="section">
+            <h2>Displays</h2>
+            <div class="displays-list" id="displaysList2"></div>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Help Modal -->
   <div class="modal-overlay" id="helpModal">
     <div class="modal">
-      <div class="modal-header"><h2>Connect a Display</h2><button class="modal-close" onclick="$('helpModal').classList.remove('show')">x</button></div>
+      <div class="modal-header">
+        <h2>Connect a Display</h2>
+        <button class="modal-close" onclick="document.getElementById('helpModal').classList.remove('show')">x</button>
+      </div>
       <div class="modal-body">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><h3>Open URL</h3><p>On any device on same WiFi</p><code id="helpUrl">loading...</code></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><h3>Add displays</h3><p>/d1, /d2, /d3...</p></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><h3>Control</h3><p>Select from library to broadcast</p></div></div>
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Open URL</h3>
+            <p>On any device on same WiFi</p>
+            <code id="helpUrl">loading...</code>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Add displays</h3>
+            <p>/d1, /d2, /d3...</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Control</h3>
+            <p>Select from library to broadcast</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Delete Confirmation Modal -->
   <div class="modal-overlay" id="deleteModal">
     <div class="modal">
-      <div class="modal-header"><h2>Delete Item</h2><button class="modal-close" onclick="$('deleteModal').classList.remove('show')">x</button></div>
+      <div class="modal-header">
+        <h2>Delete Item</h2>
+        <button class="modal-close" onclick="document.getElementById('deleteModal').classList.remove('show')">x</button>
+      </div>
       <div class="modal-body">
         <p>Are you sure you want to delete "<span id="deleteItemName"></span>"?</p>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="$('deleteModal').classList.remove('show')">Cancel</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('deleteModal').classList.remove('show')">Cancel</button>
           <button class="btn btn-danger" id="confirmDelete">Delete</button>
         </div>
       </div>
     </div>
   </div>
-  <script>
-    var SCENES=[{id:"gradient",icon:"&#127752;",name:"Gradient"},{id:"waves",icon:"&#127754;",name:"Waves"},{id:"particles",icon:"&#10024;",name:"Particles"},{id:"matrix",icon:"&#128223;",name:"Matrix"},{id:"solid",icon:"&#9724;",name:"Solid"},{id:"text",icon:"Aa",name:"Text"}];
-    var COLORS=["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#3b82f6","#8b5cf6","#ec4899","#f43f5e","#06b6d4","#84cc16","#ffffff"];
-    var ws=null,state={mode:"builtin",scene:"gradient",color:"#3b82f6",speed:1,intensity:1,text:"",displayCount:3},connectedDisplays=[],library=[],serverInfo={lanIP:"",httpPort:3000},pendingDeleteId=null,currentSelection={type:"builtin",id:"gradient"};
-    function $(id){return document.getElementById(id)}
-    function initUI(){
-      COLORS.forEach(function(c){var d=document.createElement("div");d.className="color-btn"+(c===state.color?" active":"");d.style.background=c;d.onclick=function(){selectColor(c)};$("colorGrid").appendChild(d)});
-      updateLibraryList();
-    }
-    function updateLibraryList(){
-      var l=$("libraryList");l.innerHTML="";
-      l.innerHTML+='<div class="library-divider">Built-in</div>';
-      SCENES.forEach(function(s){
-        var d=document.createElement("div");
-        d.className="library-item builtin"+(currentSelection.type==="builtin"&&currentSelection.id===s.id?" active":"");
-        d.innerHTML='<span class="icon">'+s.icon+'</span><span class="name">'+s.name+'</span>';
-        d.onclick=function(){selectBuiltin(s.id,s.name)};
-        l.appendChild(d);
-      });
-      if(library.length>0){
-        l.innerHTML+='<div class="library-divider">Custom</div>';
-        library.forEach(function(item){
-          var d=document.createElement("div");
-          d.className="library-item"+(currentSelection.type==="custom"&&currentSelection.id===item.id?" active":"");
-          d.innerHTML='<span class="icon">&#128196;</span><span class="name">'+item.name+'</span><span class="delete">x</span>';
-          d.querySelector(".name").onclick=function(){loadFromLibrary(item.id,item.name)};
-          d.querySelector(".delete").onclick=function(e){e.stopPropagation();confirmDelete(item.id,item.name)};
-          l.appendChild(d);
-        });
-      }
-      l.innerHTML+='<div class="library-divider">New</div>';
-      var newBtn=document.createElement("div");
-      newBtn.className="library-item";
-      newBtn.innerHTML='<span class="icon">+</span><span class="name">Create Custom HTML</span>';
-      newBtn.onclick=function(){showCustomEditor()};
-      l.appendChild(newBtn);
-    }
-    function selectBuiltin(id,name){
-      currentSelection={type:"builtin",id:id};
-      state.mode="builtin";state.scene=id;
-      $("modeTitle").textContent=name;
-      $("builtinControls").style.display="block";
-      $("customControls").style.display="none";
-      updateLibraryList();
-      broadcast();
-    }
-    function showCustomEditor(){
-      currentSelection={type:"custom",id:null};
-      $("modeTitle").textContent="Custom HTML";
-      $("builtinControls").style.display="none";
-      $("customControls").style.display="block";
-      $("htmlEditor").value="";
-      $("htmlName").value="";
-      updateLibraryList();
-      updateDisplaysList2();
-    }
-    function updatePreview(){var p=$("preview");p.innerHTML="";for(var i=1;i<=state.displayCount;i++){var d=document.createElement("div");d.className="preview-screen"+(connectedDisplays.indexOf(i)>=0?" connected":"");d.textContent="D"+i;p.appendChild(d)};updateDisplaysList();updateDisplaysList2()}
-    function updateDisplaysList(){var l=$("displaysList");if(!l)return;l.innerHTML="";for(var i=1;i<=state.displayCount;i++){var c=connectedDisplays.indexOf(i)>=0;var a=document.createElement("a");a.className="display-link"+(c?" connected":"");a.href="/d"+i;a.target="_blank";a.innerHTML='<span>Display '+i+'</span><span class="status">'+(c?"Connected":"Open")+'</span>';l.appendChild(a)}}
-    function updateDisplaysList2(){var l=$("displaysList2");if(!l)return;l.innerHTML="";for(var i=1;i<=state.displayCount;i++){var c=connectedDisplays.indexOf(i)>=0;var a=document.createElement("a");a.className="display-link"+(c?" connected":"");a.href="/d"+i;a.target="_blank";a.innerHTML='<span>Display '+i+'</span><span class="status">'+(c?"Connected":"Open")+'</span>';l.appendChild(a)}}
-    function selectColor(c){state.color=c;document.querySelectorAll(".color-btn").forEach(function(el){el.classList.toggle("active",el.style.background===c)});broadcast()}
-    function broadcast(){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:"update_state",state:state}))}
-    function broadcastHtml(){var h=$("htmlEditor").value,n=$("htmlName").value||"Live";if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:"broadcast_html",html:h,name:n}))}
-    function saveToLibrary(){var h=$("htmlEditor").value,n=$("htmlName").value||"Untitled";if(h&&ws&&ws.readyState===1)ws.send(JSON.stringify({type:"save_to_library",html:h,name:n}))}
-    function loadFromLibrary(id,name){
-      currentSelection={type:"custom",id:id};
-      $("modeTitle").textContent=name;
-      $("builtinControls").style.display="none";
-      $("customControls").style.display="block";
-      if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:"load_from_library",id:id}));
-      updateLibraryList();
-      updateDisplaysList2();
-    }
-    function confirmDelete(id,name){
-      pendingDeleteId=id;
-      $("deleteItemName").textContent=name;
-      $("deleteModal").classList.add("show");
-    }
-    function deleteFromLibrary(){
-      if(pendingDeleteId&&ws&&ws.readyState===1){
-        ws.send(JSON.stringify({type:"delete_from_library",id:pendingDeleteId}));
-        pendingDeleteId=null;
-        $("deleteModal").classList.remove("show");
-      }
-    }
-    function connect(){
-      ws=new WebSocket((location.protocol==="https:"?"wss:":"ws:")+"//"+location.hostname+":3001");
-      ws.onopen=function(){$("connBadge").className="badge connected";$("connBadge").querySelector("span:last-child").textContent="Online";ws.send(JSON.stringify({type:"register_control"}))};
-      ws.onclose=function(){$("connBadge").className="badge";$("connBadge").querySelector("span:last-child").textContent="Offline";setTimeout(connect,2000)};
-      ws.onmessage=function(e){var msg=JSON.parse(e.data);if(msg.type==="init"||msg.type==="state_update"){if(msg.lanIP){serverInfo.lanIP=msg.lanIP;serverInfo.httpPort=msg.httpPort||3000;$("helpUrl").textContent="http://"+serverInfo.lanIP+":"+serverInfo.httpPort+"/d1"}if(msg.state){Object.assign(state,msg.state);$("displayCount").value=state.displayCount;$("speed").value=state.speed;$("intensity").value=state.intensity;$("speedVal").textContent=state.speed.toFixed(1);$("intensityVal").textContent=state.intensity.toFixed(1);if(state.customHtml)$("htmlEditor").value=state.customHtml;if(state.customName)$("htmlName").value=state.customName}if(msg.connectedDisplays)connectedDisplays=msg.connectedDisplays;if(msg.library){library=msg.library;updateLibraryList()}updatePreview()}if(msg.type==="displays_update"){connectedDisplays=msg.connectedDisplays||[];updatePreview()}if(msg.type==="library_update"){library=msg.library||[];updateLibraryList()}};
-    }
-    $("speed").oninput=function(e){state.speed=parseFloat(e.target.value);$("speedVal").textContent=state.speed.toFixed(1);broadcast()};
-    $("intensity").oninput=function(e){state.intensity=parseFloat(e.target.value);$("intensityVal").textContent=state.intensity.toFixed(1);broadcast()};
-    $("displayCount").onchange=function(e){var val=parseInt(e.target.value)||1;state.displayCount=Math.max(1,val);e.target.value=state.displayCount;updatePreview();broadcast()};
-    $("sendText").onclick=function(){state.text=$("textInput").value;selectBuiltin("text","Text")};
-    $("broadcastHtml").onclick=broadcastHtml;
-    $("saveLibrary").onclick=saveToLibrary;
-    $("confirmDelete").onclick=deleteFromLibrary;
-    $("uploadFile").onclick=function(){$("fileInput").click()};
-    $("fileInput").onchange=function(e){var f=e.target.files[0];if(f){var r=new FileReader();r.onload=function(ev){$("htmlEditor").value=ev.target.result;$("htmlName").value=f.name.replace(/\.[^.]+$/,"")};r.readAsText(f)}};
-    $("helpBtn").onclick=function(){$("helpModal").classList.add("show")};
-    document.querySelectorAll(".modal-overlay").forEach(function(m){m.onclick=function(e){if(e.target===m)m.classList.remove("show")}});
-    document.addEventListener("keydown",function(e){if(e.key==="Escape")document.querySelectorAll(".modal-overlay").forEach(function(m){m.classList.remove("show")})});
-    initUI();updatePreview();connect();
-  </script>
+
+  <script src="js/control.js"></script>
 </body>
 </html>
