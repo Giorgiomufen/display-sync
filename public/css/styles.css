@@ -642,78 +642,81 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--text);
 }
 
-/* Canvas Mode */
-.canvas-area {
+/* Canvas Editor */
+.canvas-editor {
   position: relative;
   width: 100%;
-  height: 400px;
-  background: var(--surface-hover);
-  border: 2px dashed var(--border);
+  height: 300px;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
 }
 
-.display-box {
+.canvas-viewport {
   position: absolute;
-  width: 100px;
-  height: 60px;
-  background: var(--accent);
-  border: 2px solid var(--text);
-  border-radius: 6px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.1);
+  transform-origin: center;
+  background: #000;
+}
+
+.canvas-display {
+  position: absolute;
+  background: #222;
+  border: 2px solid #444;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text);
+  font-size: 14px;
+  color: #666;
+  pointer-events: none;
+}
+
+.canvas-element {
+  position: absolute;
   cursor: move;
   user-select: none;
-  transition: transform 0.1s;
 }
 
-.display-box:hover {
-  transform: scale(1.05);
-  z-index: 10;
+.canvas-element.selected {
+  outline: 2px solid var(--accent);
 }
 
-.display-box.dragging {
-  opacity: 0.7;
-  z-index: 100;
+.canvas-element.rect {
+  border: 1px solid rgba(255,255,255,0.3);
 }
 
-.canvas-dropzone {
-  border: 2px dashed var(--border);
-  border-radius: 8px;
-  padding: 40px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 12px;
+.canvas-element img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
 }
 
-.canvas-dropzone:hover {
-  border-color: var(--accent);
-  background: var(--surface-hover);
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 1px solid #fff;
 }
 
-.canvas-dropzone.dragover {
-  border-color: var(--success);
-  background: rgba(34, 197, 94, 0.1);
-}
+.resize-handle.se { right: -5px; bottom: -5px; cursor: se-resize; }
 
-.dropzone-text {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.url-input-group {
+.canvas-toolbar {
   display: flex;
   gap: 8px;
+  margin-top: 12px;
+  align-items: center;
 }
 
-.url-input-group .text-input {
-  flex: 1;
-  margin-bottom: 0;
+.toolbar-info {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
 }
 
 /* Add Content Popup */

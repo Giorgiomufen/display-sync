@@ -39,6 +39,7 @@ class State:
         self.canvas_mode = False
         self.canvas_layout = {}
         self.canvas_content = None
+        self.canvas_elements = []
 
     def to_dict(self):
         return {
@@ -53,7 +54,8 @@ class State:
             "customName": self.custom_name,
             "canvasMode": self.canvas_mode,
             "canvasLayout": self.canvas_layout,
-            "canvasContent": self.canvas_content
+            "canvasContent": self.canvas_content,
+            "canvasElements": self.canvas_elements
         }
 
     def update(self, data):
@@ -69,6 +71,7 @@ class State:
         if "canvasMode" in data: self.canvas_mode = data["canvasMode"]
         if "canvasLayout" in data: self.canvas_layout = data["canvasLayout"]
         if "canvasContent" in data: self.canvas_content = data["canvasContent"]
+        if "canvasElements" in data: self.canvas_elements = data["canvasElements"]
 
 
 state = State()
@@ -276,22 +279,23 @@ async def handle_client(websocket):
                     "state": state.to_dict()
                 })
 
-            elif msg_type == "canvas_content":
-                # Handle canvas content (solid color, etc.)
-                state.canvas_content = data.get("content")
+            elif msg_type == "canvas_elements":
+                state.canvas_elements = data.get("elements", [])
                 if "canvasLayout" in data:
                     state.canvas_layout = data["canvasLayout"]
-                print(f"[CANVAS] Broadcasting content to ALL displays: {state.canvas_content}")
-                print(f"[CANVAS] Connected displays: {get_connected_displays()}")
                 await broadcast_to("display", {
                     "type": "state_update",
                     "state": state.to_dict()
                 })
-                await broadcast_to("control", {
+
+            elif msg_type == "canvas_content":
+                state.canvas_content = data.get("content")
+                if "canvasLayout" in data:
+                    state.canvas_layout = data["canvasLayout"]
+                await broadcast_to("display", {
                     "type": "state_update",
                     "state": state.to_dict()
                 })
-                print(f"[CANVAS] Broadcast complete")
 
             elif msg_type == "canvas_upload":
                 import base64

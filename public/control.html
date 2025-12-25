@@ -101,12 +101,16 @@
       <!-- Canvas Mode -->
       <div id="canvasMode" style="display:none;">
         <div class="section">
-          <h2>Canvas Layout</h2>
-          <div class="canvas-area" id="canvasArea"></div>
-        </div>
-        <div class="section">
-          <button class="btn btn-large" id="addContentBtn">+ Add Content</button>
-          <input type="file" id="canvasFileInput" accept="image/*" style="display:none;">
+          <h2>Canvas Editor</h2>
+          <div class="canvas-editor" id="canvasEditor">
+            <div class="canvas-viewport" id="canvasViewport"></div>
+          </div>
+          <div class="canvas-toolbar">
+            <button class="btn" id="addRectBtn">+ Rectangle</button>
+            <button class="btn" id="addImageBtn">+ Image</button>
+            <input type="file" id="canvasFileInput" accept="image/*" style="display:none;">
+            <span class="toolbar-info" id="cursorInfo">x: 0, y: 0</span>
+          </div>
         </div>
       </div>
     </div>

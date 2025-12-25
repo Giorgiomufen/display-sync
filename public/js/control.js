@@ -72,128 +72,184 @@ function switchViewMode(mode) {
   }
 }
 
-// Canvas Functions
+// Canvas Editor
+var canvasElements = [];
+var selectedElement = null;
+var draggingElement = null;
+var resizingElement = null;
+var editorScale = 0.1;
+
 function initCanvas() {
-  var canvas = $("canvasArea");
-  canvas.innerHTML = "";
+  var viewport = $("canvasViewport");
+  viewport.innerHTML = "";
 
-  // Create display boxes based on displayCount
+  // Calculate total canvas size from display layout
+  var totalW = state.displayCount * 1920;
+  var totalH = 1080;
+
+  // Set viewport size
+  viewport.style.width = totalW + "px";
+  viewport.style.height = totalH + "px";
+
+  // Create display outlines
   for (var i = 1; i <= state.displayCount; i++) {
-    var box = document.createElement("div");
-    box.className = "display-box";
-    box.textContent = "D" + i;
-    box.dataset.displayId = i;
+    var key = "d" + i;
+    var offset = state.canvasLayout[key] || { x: (i-1) * 1920, y: 0 };
 
-    // Use display key format "d1", "d2", etc.
-    var displayKey = "d" + i;
-
-    // Set initial position from state or default
-    var x, y;
-    if (state.canvasLayout[displayKey]) {
-      // Convert actual display positions back to UI positions
-      x = Math.round(state.canvasLayout[displayKey].x / 1920) * 120;
-      y = Math.round(state.canvasLayout[displayKey].y / 1080) * 60;
-    } else {
-      // Default UI positions
-      x = 50 + (i - 1) * 120;
-      y = 50;
+    // Set default layout if not set
+    if (!state.canvasLayout[key]) {
+      state.canvasLayout[key] = offset;
     }
-    box.style.left = x + "px";
-    box.style.top = y + "px";
 
-    // Add drag event listeners
-    box.addEventListener("mousedown", onDisplayMouseDown);
+    var disp = document.createElement("div");
+    disp.className = "canvas-display";
+    disp.style.left = offset.x + "px";
+    disp.style.top = offset.y + "px";
+    disp.style.width = "1920px";
+    disp.style.height = "1080px";
+    disp.textContent = "D" + i;
+    viewport.appendChild(disp);
+  }
 
-    canvas.appendChild(box);
+  // Re-add existing elements
+  canvasElements.forEach(function(el) {
+    addElementToViewport(el);
+  });
+
+  // Bind editor events
+  bindEditorEvents();
+}
+
+function bindEditorEvents() {
+  var editor = $("canvasEditor");
+  var viewport = $("canvasViewport");
+
+  editor.onmousemove = function(e) {
+    var rect = viewport.getBoundingClientRect();
+    var x = Math.round((e.clientX - rect.left) / editorScale);
+    var y = Math.round((e.clientY - rect.top) / editorScale);
+    $("cursorInfo").textContent = "x: " + x + ", y: " + y;
+
+    if (draggingElement) {
+      draggingElement.x = x - dragOffset.x;
+      draggingElement.y = y - dragOffset.y;
+      updateElementPosition(draggingElement);
+      broadcastElements();
+    }
+    if (resizingElement) {
+      resizingElement.w = Math.max(100, x - resizingElement.x);
+      resizingElement.h = Math.max(100, y - resizingElement.y);
+      updateElementPosition(resizingElement);
+      broadcastElements();
+    }
+  };
+
+  editor.onmouseup = function() {
+    draggingElement = null;
+    resizingElement = null;
+  };
+
+  editor.onclick = function(e) {
+    if (e.target === editor || e.target === viewport) {
+      selectElement(null);
+    }
+  };
+}
+
+function addElement(type, options) {
+  var el = {
+    id: Date.now(),
+    type: type,
+    x: 100,
+    y: 100,
+    w: options.w || 800,
+    h: options.h || 600,
+    color: options.color || "#ff0000",
+    src: options.src || null
+  };
+  canvasElements.push(el);
+  addElementToViewport(el);
+  selectElement(el);
+  broadcastElements();
+}
+
+function addElementToViewport(el) {
+  var viewport = $("canvasViewport");
+  var div = document.createElement("div");
+  div.className = "canvas-element " + el.type;
+  div.dataset.id = el.id;
+
+  if (el.type === "rect") {
+    div.style.background = el.color;
+  } else if (el.type === "image" && el.src) {
+    var img = document.createElement("img");
+    img.src = el.src;
+    div.appendChild(img);
+  }
+
+  // Resize handle
+  var handle = document.createElement("div");
+  handle.className = "resize-handle se";
+  handle.onmousedown = function(e) {
+    e.stopPropagation();
+    resizingElement = el;
+  };
+  div.appendChild(handle);
+
+  div.onmousedown = function(e) {
+    if (e.target.className.includes("resize-handle")) return;
+    e.stopPropagation();
+    selectElement(el);
+    draggingElement = el;
+    var rect = $("canvasViewport").getBoundingClientRect();
+    dragOffset.x = (e.clientX - rect.left) / editorScale - el.x;
+    dragOffset.y = (e.clientY - rect.top) / editorScale - el.y;
+  };
+
+  el.dom = div;
+  updateElementPosition(el);
+  viewport.appendChild(div);
+}
+
+function updateElementPosition(el) {
+  if (!el.dom) return;
+  el.dom.style.left = el.x + "px";
+  el.dom.style.top = el.y + "px";
+  el.dom.style.width = el.w + "px";
+  el.dom.style.height = el.h + "px";
+}
+
+function selectElement(el) {
+  if (selectedElement && selectedElement.dom) {
+    selectedElement.dom.classList.remove("selected");
+  }
+  selectedElement = el;
+  if (el && el.dom) {
+    el.dom.classList.add("selected");
   }
 }
 
-function onDisplayMouseDown(e) {
-  e.preventDefault();
-  draggedDisplay = e.target;
-  draggedDisplay.classList.add("dragging");
-
-  var rect = draggedDisplay.getBoundingClientRect();
-  var canvasRect = $("canvasArea").getBoundingClientRect();
-  dragOffset.x = e.clientX - rect.left;
-  dragOffset.y = e.clientY - rect.top;
-
-  document.addEventListener("mousemove", onDisplayMouseMove);
-  document.addEventListener("mouseup", onDisplayMouseUp);
-}
-
-function onDisplayMouseMove(e) {
-  if (!draggedDisplay) return;
-
-  var canvasRect = $("canvasArea").getBoundingClientRect();
-  var x = e.clientX - canvasRect.left - dragOffset.x;
-  var y = e.clientY - canvasRect.top - dragOffset.y;
-
-  // Snap to grid if CTRL is pressed
-  if (isCtrlPressed) {
-    x = Math.round(x / 100) * 100;
-    y = Math.round(y / 100) * 100;
-  }
-
-  // Constrain to canvas bounds
-  x = Math.max(0, Math.min(x, canvasRect.width - 100));
-  y = Math.max(0, Math.min(y, canvasRect.height - 60));
-
-  draggedDisplay.style.left = x + "px";
-  draggedDisplay.style.top = y + "px";
-}
-
-function onDisplayMouseUp(e) {
-  if (!draggedDisplay) return;
-
-  draggedDisplay.classList.remove("dragging");
-
-  // Save position to state
-  var displayId = parseInt(draggedDisplay.dataset.displayId);
-  var x = parseInt(draggedDisplay.style.left);
-  var y = parseInt(draggedDisplay.style.top);
-
-  // Convert to display key format "d1", "d2", etc.
-  var displayKey = "d" + displayId;
-
-  // Scale UI positions to actual display pixel positions
-  // Each display is 1920x1080, UI boxes are ~120px wide
-  // Calculate column/row position and convert to actual pixels
-  var scaleX = 1920 / 120; // 16:1 ratio
-  var scaleY = 1080 / 60;  // 18:1 ratio
-  var actualX = Math.round(x / 120) * 1920;
-  var actualY = Math.round(y / 60) * 1080;
-
-  state.canvasLayout[displayKey] = { x: actualX, y: actualY };
-
-  // Send update to server
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify({
-      type: "update_canvas_layout",
-      canvasLayout: state.canvasLayout
-    }));
-  }
-
-  draggedDisplay = null;
-  document.removeEventListener("mousemove", onDisplayMouseMove);
-  document.removeEventListener("mouseup", onDisplayMouseUp);
+function broadcastElements() {
+  if (!ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({
+    type: "canvas_elements",
+    elements: canvasElements.map(function(el) {
+      return { type: el.type, x: el.x, y: el.y, w: el.w, h: el.h, color: el.color, src: el.src };
+    }),
+    canvasLayout: state.canvasLayout
+  }));
 }
 
 // Image Upload Functions
 function uploadCanvasImage(file) {
-  console.log("uploadCanvasImage called for file:", file.name);
   var reader = new FileReader();
   reader.onload = function(ev) {
-    var base64 = ev.target.result;
-    console.log("File read complete, base64 length:", base64.length);
     if (ws && ws.readyState === 1) {
-      console.log("Sending image to ALL displays");
       ws.send(JSON.stringify({
         type: "canvas_upload",
-        image: base64
+        image: ev.target.result,
+        canvasLayout: state.canvasLayout
       }));
-    } else {
-      console.log("WebSocket not ready. State:", ws ? ws.readyState : "null");
     }
   };
   reader.readAsDataURL(file);
@@ -540,34 +596,37 @@ function bindEvents() {
     };
   });
 
-  // Canvas add content button
-  $("addContentBtn").onclick = function() {
-    showAddPopup();
+  // Canvas editor buttons
+  $("addRectBtn").onclick = function() {
+    var color = prompt("Color:", "#ff0000");
+    if (color) {
+      addElement("rect", { color: color, w: 1920, h: 1080 });
+    }
+  };
+
+  $("addImageBtn").onclick = function() {
+    $("canvasFileInput").click();
   };
 
   $("canvasFileInput").onchange = function(e) {
     var file = e.target.files[0];
     if (file) {
-      uploadCanvasImage(file);
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        addElement("image", { src: ev.target.result, w: 1920, h: 1080 });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  // Add popup event handlers
-  var popup = $("addPopup");
-
-  // Close popup when clicking overlay
-  popup.onclick = function(e) {
-    if (e.target === popup) {
-      closeAddPopup();
+  // Delete key removes selected element
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Delete" && selectedElement) {
+      canvasElements = canvasElements.filter(function(el) { return el !== selectedElement; });
+      if (selectedElement.dom) selectedElement.dom.remove();
+      selectedElement = null;
+      broadcastElements();
     }
-  };
-
-  // Handle popup item clicks
-  document.querySelectorAll(".popup-item").forEach(function(item) {
-    item.onclick = function() {
-      var action = item.dataset.action;
-      handleAddAction(action);
-    };
   });
 }
 
@@ -587,32 +646,26 @@ function handleAddAction(action) {
     // Trigger file input
     $("canvasFileInput").click();
   } else if (action === "image-url") {
-    // Prompt for URL
     var url = prompt("Enter image URL:");
-    if (url && url.trim()) {
-      if (ws && ws.readyState === 1) {
-        console.log("Sending image URL to ALL displays:", url.trim());
-        ws.send(JSON.stringify({
-          type: "canvas_upload",
-          url: url.trim()
-        }));
-      }
+    if (url && url.trim() && ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({
+        type: "canvas_upload",
+        url: url.trim(),
+        canvasLayout: state.canvasLayout
+      }));
     }
   } else if (action === "solid-color") {
-    // Prompt for color
-    var color = prompt("Enter hex color (e.g., #ff0000):");
-    if (color && color.trim()) {
-      // Validate hex color format
-      var hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-      if (!hexPattern.test(color.trim())) {
-        alert("Invalid hex color format. Use format like #ff0000");
-        return;
-      }
+    var color = prompt("Enter hex color (e.g., #ff0000):", "#ff0000");
+    if (color && /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color.trim())) {
+      var x = parseInt(prompt("X position:", "0")) || 0;
+      var y = parseInt(prompt("Y position:", "0")) || 0;
+      var w = parseInt(prompt("Width:", "1920")) || 1920;
+      var h = parseInt(prompt("Height:", "1080")) || 1080;
       if (ws && ws.readyState === 1) {
-        console.log("Sending solid color to ALL displays:", color.trim());
         ws.send(JSON.stringify({
           type: "canvas_content",
-          content: { type: "solid", color: color.trim() }
+          content: { type: "rect", color: color.trim(), x: x, y: y, w: w, h: h },
+          canvasLayout: state.canvasLayout
         }));
       }
     }
