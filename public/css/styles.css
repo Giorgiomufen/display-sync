@@ -610,6 +610,169 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: 5px;
 }
 
+/* Mode Tabs */
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  padding: 5px;
+  border-radius: 8px;
+}
+
+.mode-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.mode-tab:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.mode-tab.active {
+  background: var(--accent);
+  color: var(--text);
+}
+
+/* Canvas Mode */
+.canvas-area {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background: var(--surface-hover);
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.display-box {
+  position: absolute;
+  width: 100px;
+  height: 60px;
+  background: var(--accent);
+  border: 2px solid var(--text);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: move;
+  user-select: none;
+  transition: transform 0.1s;
+}
+
+.display-box:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.display-box.dragging {
+  opacity: 0.7;
+  z-index: 100;
+}
+
+.canvas-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+
+.canvas-dropzone:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.canvas-dropzone.dragover {
+  border-color: var(--success);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.dropzone-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.url-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.url-input-group .text-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* Add Content Popup */
+.popup-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.popup-overlay.show {
+  display: flex;
+}
+
+.popup-menu {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.popup-title {
+  padding: 12px 16px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.popup-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.2s;
+}
+
+.popup-item:hover {
+  background: var(--surface-hover);
+}
+
+.popup-icon {
+  width: 20px;
+  text-align: center;
+}
+
+.btn-large {
+  padding: 12px 24px;
+  font-size: 1rem;
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .layout {
     grid-template-columns: 1fr;

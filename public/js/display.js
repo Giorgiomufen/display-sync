@@ -21,13 +21,18 @@ var state = {
   intensity: 1,
   text: "",
   displayCount: 3,
-  customHtml: ""
+  customHtml: "",
+  canvasMode: false,
+  canvasLayout: {},
+  canvasContent: null
 };
 var time = 0;
 var particles = [];
 var matrixDrops = null;
 var lastCustomHtml = "";
 var animationId = null;
+var canvasImage = null;
+var canvasImageUrl = null;
 
 // Resize handler
 function resize() {
@@ -189,11 +194,108 @@ function renderCustomHtml() {
   }
 }
 
+function renderCanvas() {
+  // Check if we have canvas content
+  if (!state.canvasContent) {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  // Handle solid color - just fill the whole screen
+  if (state.canvasContent.type === "solid") {
+    ctx.fillStyle = state.canvasContent.color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  // Handle image - show the SAME image on ALL displays
+  if (state.canvasContent.type !== "image") {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  var imageUrl = state.canvasContent.url;
+
+  // Load image if URL changed or not loaded yet
+  if (imageUrl !== canvasImageUrl) {
+    canvasImageUrl = imageUrl;
+    canvasImage = new Image();
+    canvasImage.crossOrigin = "anonymous";
+
+    canvasImage.onload = function() {
+      drawCanvasImage();
+    };
+
+    canvasImage.onerror = function() {
+      console.error("Failed to load canvas image:", imageUrl);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    };
+
+    // Convert relative URL to absolute URL for HTTP server
+    var fullUrl = imageUrl;
+    if (imageUrl.startsWith('/')) {
+      fullUrl = window.location.protocol + '//' + window.location.hostname + ':3000' + imageUrl;
+    }
+    console.log("Loading canvas image from:", fullUrl);
+    canvasImage.src = fullUrl;
+  } else if (canvasImage && canvasImage.complete) {
+    // Image already loaded, draw it
+    drawCanvasImage();
+  } else {
+    // Image is loading, show black screen
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function drawCanvasImage() {
+  if (!canvasImage || !canvasImage.complete) return;
+
+  // SIMPLIFIED: Show the SAME image on ALL displays
+  // Fill the entire canvas with the image (cover mode)
+  var imgRatio = canvasImage.width / canvasImage.height;
+  var canvasRatio = canvas.width / canvas.height;
+
+  var drawWidth, drawHeight, drawX, drawY;
+
+  if (imgRatio > canvasRatio) {
+    // Image is wider - fit to height
+    drawHeight = canvas.height;
+    drawWidth = canvasImage.width * (canvas.height / canvasImage.height);
+    drawX = (canvas.width - drawWidth) / 2;
+    drawY = 0;
+  } else {
+    // Image is taller - fit to width
+    drawWidth = canvas.width;
+    drawHeight = canvasImage.height * (canvas.width / canvasImage.width);
+    drawX = 0;
+    drawY = (canvas.height - drawHeight) / 2;
+  }
+
+  // Fill background with black
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw the image centered and covering the canvas
+  ctx.drawImage(canvasImage, drawX, drawY, drawWidth, drawHeight);
+}
+
 // Main render loop
 function render() {
   time++;
 
-  if (state.mode === "custom" && state.customHtml) {
+  if (state.canvasMode) {
+    // Canvas mode is active - render the cropped canvas image
+    canvas.style.display = "block";
+    document.getElementById("textOverlay").style.display = "none";
+    customContainer.classList.remove("active");
+    customContainer.innerHTML = "";
+    lastCustomHtml = "";
+    renderCanvas();
+  } else if (state.mode === "custom" && state.customHtml) {
     canvas.style.display = "none";
     document.getElementById("textOverlay").style.display = "none";
     customContainer.classList.add("active");

@@ -1,13 +1,31 @@
 # Roadmap
 
-## Canvas Mode
+## Canvas Mode (In Progress)
 
-Arrange displays spatially, span content across them.
+Arrange displays spatially, span content across them like a video wall.
 
-- Drag displays to position on grid
-- Drop image/video/HTML that spans across
-- Each display gets cropped portion
-- Sync playback for video
+### How It Works
+- Control panel has two modes: **Scenes** (current) and **Canvas**
+- In Canvas mode, drag displays to position them (CTRL+drag snaps to grid)
+- Drop an image - it spans across all displays
+- Each display renders its cropped portion
+
+### Implementation
+1. Mode tabs in control panel
+2. Virtual canvas with draggable display boxes
+3. Image drop zone + URL paste
+4. Display crop rendering based on layout position
+
+### State
+```javascript
+canvasMode: false,
+canvasLayout: { d1: {x: 0, y: 0}, d2: {x: 1920, y: 0}, ... },
+canvasContent: { type: "image", url: "/canvas/image.jpg" }
+```
+
+### Future Additions
+- Video spanning with time sync
+- HTML spanning with CSS transform
 
 ## Time-Based Sync
 

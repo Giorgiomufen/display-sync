@@ -21,6 +21,7 @@ PORT_HTTP = 3000
 PORT_WS = 3001
 BASE_DIR = Path(__file__).parent
 CUSTOM_DIR = BASE_DIR / "custom"
+CANVAS_DIR = BASE_DIR / "canvas"
 
 
 class State:
@@ -35,6 +36,9 @@ class State:
         self.display_count = 3
         self.custom_html = ""
         self.custom_name = ""
+        self.canvas_mode = False
+        self.canvas_layout = {}
+        self.canvas_content = None
 
     def to_dict(self):
         return {
@@ -46,7 +50,10 @@ class State:
             "text": self.text,
             "displayCount": self.display_count,
             "customHtml": self.custom_html,
-            "customName": self.custom_name
+            "customName": self.custom_name,
+            "canvasMode": self.canvas_mode,
+            "canvasLayout": self.canvas_layout,
+            "canvasContent": self.canvas_content
         }
 
     def update(self, data):
@@ -59,6 +66,9 @@ class State:
         if "displayCount" in data: self.display_count = int(data["displayCount"])
         if "customHtml" in data: self.custom_html = data["customHtml"]
         if "customName" in data: self.custom_name = data["customName"]
+        if "canvasMode" in data: self.canvas_mode = data["canvasMode"]
+        if "canvasLayout" in data: self.canvas_layout = data["canvasLayout"]
+        if "canvasContent" in data: self.canvas_content = data["canvasContent"]
 
 
 state = State()
@@ -244,6 +254,108 @@ async def handle_client(websocket):
                     "state": state.to_dict()
                 })
 
+            elif msg_type == "set_canvas_mode":
+                state.canvas_mode = data.get("canvasMode", False)
+                await broadcast_to("display", {
+                    "type": "state_update",
+                    "state": state.to_dict()
+                })
+                await broadcast_to("control", {
+                    "type": "state_update",
+                    "state": state.to_dict()
+                })
+
+            elif msg_type == "update_canvas_layout":
+                state.canvas_layout = data.get("canvasLayout", {})
+                await broadcast_to("display", {
+                    "type": "state_update",
+                    "state": state.to_dict()
+                })
+                await broadcast_to("control", {
+                    "type": "state_update",
+                    "state": state.to_dict()
+                })
+
+            elif msg_type == "canvas_content":
+                # Handle canvas content (solid color, etc.)
+                state.canvas_content = data.get("content")
+                if "canvasLayout" in data:
+                    state.canvas_layout = data["canvasLayout"]
+                print(f"[CANVAS] Broadcasting content to ALL displays: {state.canvas_content}")
+                print(f"[CANVAS] Connected displays: {get_connected_displays()}")
+                await broadcast_to("display", {
+                    "type": "state_update",
+                    "state": state.to_dict()
+                })
+                await broadcast_to("control", {
+                    "type": "state_update",
+                    "state": state.to_dict()
+                })
+                print(f"[CANVAS] Broadcast complete")
+
+            elif msg_type == "canvas_upload":
+                import base64
+                CANVAS_DIR.mkdir(exist_ok=True)
+                print(f"[DEBUG] Canvas upload received")
+
+                # Update canvas layout if provided
+                if "canvasLayout" in data:
+                    state.canvas_layout = data["canvasLayout"]
+                    print(f"[DEBUG] Canvas layout updated: {state.canvas_layout}")
+
+                url = data.get("url", "")
+                print(f"[DEBUG] URL from message: {url}")
+
+                # Handle base64 image upload
+                image_data = data.get("image", "")
+                print(f"[DEBUG] Image data received: {len(image_data) if image_data else 0} chars")
+
+                if image_data:
+                    # Detect image format from data URL
+                    extension = ".png"
+                    if image_data.startswith("data:image"):
+                        print(f"[DEBUG] Stripping data:image prefix")
+                        header, image_data = image_data.split(",", 1)
+                        # Extract format (e.g., "data:image/jpeg;base64" -> ".jpeg")
+                        if "image/jpeg" in header or "image/jpg" in header:
+                            extension = ".jpg"
+                        elif "image/png" in header:
+                            extension = ".png"
+                        elif "image/gif" in header:
+                            extension = ".gif"
+                        elif "image/webp" in header:
+                            extension = ".webp"
+
+                    file_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}{extension}"
+                    image_path = CANVAS_DIR / file_id
+                    print(f"[DEBUG] Saving to: {image_path}")
+
+                    try:
+                        image_bytes = base64.b64decode(image_data)
+                        image_path.write_bytes(image_bytes)
+                        url = f"/canvas/{file_id}"
+                        print(f"[DEBUG] Image saved successfully, URL: {url}")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to save image: {e}")
+                        url = ""
+
+                # Set canvas content and broadcast to all displays
+                if url:
+                    state.canvas_content = {"type": "image", "url": url}
+                    print(f"[CANVAS] Broadcasting image to ALL displays: {state.canvas_content}")
+                    print(f"[CANVAS] Connected displays: {get_connected_displays()}")
+                    await broadcast_to("display", {
+                        "type": "state_update",
+                        "state": state.to_dict()
+                    })
+                    await broadcast_to("control", {
+                        "type": "state_update",
+                        "state": state.to_dict()
+                    })
+                    print(f"[CANVAS] Broadcast complete")
+                else:
+                    print(f"[ERROR] No URL to broadcast")
+
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
@@ -269,6 +381,17 @@ class HTTPHandler(BaseHTTPRequestHandler):
             self._serve_file(public / "display.html", "text/html")
         elif self.path == "/api/library":
             self._json_response(get_library())
+        elif self.path.startswith("/canvas/"):
+            # Serve canvas images
+            file_name = self.path.replace("/canvas/", "")
+            file_path = CANVAS_DIR / file_name
+            print(f"[DEBUG] Canvas file request: {file_name} -> {file_path}")
+            if file_path.exists() and file_path.is_file():
+                print(f"[DEBUG] Serving canvas file: {file_path}")
+                self._serve_file(file_path, self._get_content_type(file_path))
+            else:
+                print(f"[ERROR] Canvas file not found: {file_path}")
+                self.send_error(404)
         else:
             file_path = public / self.path.lstrip("/")
             if file_path.exists() and file_path.is_file():
@@ -300,6 +423,9 @@ class HTTPHandler(BaseHTTPRequestHandler):
             ".json": "application/json",
             ".png": "image/png",
             ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
             ".svg": "image/svg+xml",
         }.get(suffix, "application/octet-stream")
 
@@ -312,6 +438,7 @@ def run_http_server():
 async def main():
     """Main entry point."""
     CUSTOM_DIR.mkdir(exist_ok=True)
+    CANVAS_DIR.mkdir(exist_ok=True)
     ip = get_local_ip()
 
     print(f"""

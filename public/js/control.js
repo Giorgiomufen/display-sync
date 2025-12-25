@@ -26,17 +26,192 @@ var state = {
   speed: 1,
   intensity: 1,
   text: "",
-  displayCount: 3
+  displayCount: 3,
+  canvasMode: false,
+  canvasLayout: {}
 };
 var connectedDisplays = [];
 var library = [];
 var serverInfo = { lanIP: "", httpPort: 3000 };
 var pendingDeleteId = null;
 var currentMode = "builtin"; // "builtin" or "custom"
+var currentViewMode = "scenes"; // "scenes" or "canvas"
+var draggedDisplay = null;
+var dragOffset = { x: 0, y: 0 };
+var isCtrlPressed = false;
 
 // Helpers
 function $(id) {
   return document.getElementById(id);
+}
+
+// Mode Switching
+function switchViewMode(mode) {
+  currentViewMode = mode;
+
+  // Update tabs
+  document.querySelectorAll(".mode-tab").forEach(function(tab) {
+    tab.classList.toggle("active", tab.dataset.mode === mode);
+  });
+
+  // Show/hide sections
+  if (mode === "scenes") {
+    $("scenesMode").style.display = "block";
+    $("canvasMode").style.display = "none";
+    state.canvasMode = false;
+  } else if (mode === "canvas") {
+    $("scenesMode").style.display = "none";
+    $("canvasMode").style.display = "block";
+    state.canvasMode = true;
+    initCanvas();
+  }
+
+  // Send to server
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: "set_canvas_mode", canvasMode: state.canvasMode }));
+  }
+}
+
+// Canvas Functions
+function initCanvas() {
+  var canvas = $("canvasArea");
+  canvas.innerHTML = "";
+
+  // Create display boxes based on displayCount
+  for (var i = 1; i <= state.displayCount; i++) {
+    var box = document.createElement("div");
+    box.className = "display-box";
+    box.textContent = "D" + i;
+    box.dataset.displayId = i;
+
+    // Use display key format "d1", "d2", etc.
+    var displayKey = "d" + i;
+
+    // Set initial position from state or default
+    var x, y;
+    if (state.canvasLayout[displayKey]) {
+      // Convert actual display positions back to UI positions
+      x = Math.round(state.canvasLayout[displayKey].x / 1920) * 120;
+      y = Math.round(state.canvasLayout[displayKey].y / 1080) * 60;
+    } else {
+      // Default UI positions
+      x = 50 + (i - 1) * 120;
+      y = 50;
+    }
+    box.style.left = x + "px";
+    box.style.top = y + "px";
+
+    // Add drag event listeners
+    box.addEventListener("mousedown", onDisplayMouseDown);
+
+    canvas.appendChild(box);
+  }
+}
+
+function onDisplayMouseDown(e) {
+  e.preventDefault();
+  draggedDisplay = e.target;
+  draggedDisplay.classList.add("dragging");
+
+  var rect = draggedDisplay.getBoundingClientRect();
+  var canvasRect = $("canvasArea").getBoundingClientRect();
+  dragOffset.x = e.clientX - rect.left;
+  dragOffset.y = e.clientY - rect.top;
+
+  document.addEventListener("mousemove", onDisplayMouseMove);
+  document.addEventListener("mouseup", onDisplayMouseUp);
+}
+
+function onDisplayMouseMove(e) {
+  if (!draggedDisplay) return;
+
+  var canvasRect = $("canvasArea").getBoundingClientRect();
+  var x = e.clientX - canvasRect.left - dragOffset.x;
+  var y = e.clientY - canvasRect.top - dragOffset.y;
+
+  // Snap to grid if CTRL is pressed
+  if (isCtrlPressed) {
+    x = Math.round(x / 100) * 100;
+    y = Math.round(y / 100) * 100;
+  }
+
+  // Constrain to canvas bounds
+  x = Math.max(0, Math.min(x, canvasRect.width - 100));
+  y = Math.max(0, Math.min(y, canvasRect.height - 60));
+
+  draggedDisplay.style.left = x + "px";
+  draggedDisplay.style.top = y + "px";
+}
+
+function onDisplayMouseUp(e) {
+  if (!draggedDisplay) return;
+
+  draggedDisplay.classList.remove("dragging");
+
+  // Save position to state
+  var displayId = parseInt(draggedDisplay.dataset.displayId);
+  var x = parseInt(draggedDisplay.style.left);
+  var y = parseInt(draggedDisplay.style.top);
+
+  // Convert to display key format "d1", "d2", etc.
+  var displayKey = "d" + displayId;
+
+  // Scale UI positions to actual display pixel positions
+  // Each display is 1920x1080, UI boxes are ~120px wide
+  // Calculate column/row position and convert to actual pixels
+  var scaleX = 1920 / 120; // 16:1 ratio
+  var scaleY = 1080 / 60;  // 18:1 ratio
+  var actualX = Math.round(x / 120) * 1920;
+  var actualY = Math.round(y / 60) * 1080;
+
+  state.canvasLayout[displayKey] = { x: actualX, y: actualY };
+
+  // Send update to server
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({
+      type: "update_canvas_layout",
+      canvasLayout: state.canvasLayout
+    }));
+  }
+
+  draggedDisplay = null;
+  document.removeEventListener("mousemove", onDisplayMouseMove);
+  document.removeEventListener("mouseup", onDisplayMouseUp);
+}
+
+// Image Upload Functions
+function uploadCanvasImage(file) {
+  console.log("uploadCanvasImage called for file:", file.name);
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var base64 = ev.target.result;
+    console.log("File read complete, base64 length:", base64.length);
+    if (ws && ws.readyState === 1) {
+      console.log("Sending image to ALL displays");
+      ws.send(JSON.stringify({
+        type: "canvas_upload",
+        image: base64
+      }));
+    } else {
+      console.log("WebSocket not ready. State:", ws ? ws.readyState : "null");
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadCanvasImageUrl() {
+  var url = $("canvasUrlInput").value.trim();
+  console.log("loadCanvasImageUrl called with URL:", url);
+  if (url && ws && ws.readyState === 1) {
+    console.log("Sending canvas_upload with URL to server");
+    ws.send(JSON.stringify({
+      type: "canvas_upload",
+      url: url
+    }));
+    $("canvasUrlInput").value = "";
+  } else {
+    console.log("URL empty or WebSocket not ready");
+  }
 }
 
 // Build scene grid with built-in + custom items
@@ -240,6 +415,11 @@ function connect() {
         $("intensityVal").textContent = state.intensity.toFixed(1);
         if (state.customHtml) $("htmlEditor").value = state.customHtml;
         if (state.customName) $("htmlName").value = state.customName;
+
+        // Update canvas mode if needed
+        if (state.canvasMode && currentViewMode === "canvas") {
+          initCanvas();
+        }
       }
       if (msg.connectedDisplays) connectedDisplays = msg.connectedDisplays;
       if (msg.library) {
@@ -252,6 +432,10 @@ function connect() {
     if (msg.type === "displays_update") {
       connectedDisplays = msg.connectedDisplays || [];
       updatePreview();
+      // Refresh canvas if in canvas mode
+      if (currentViewMode === "canvas") {
+        initCanvas();
+      }
     }
 
     if (msg.type === "library_update") {
@@ -280,6 +464,9 @@ function bindEvents() {
     state.displayCount = Math.max(1, val);
     e.target.value = state.displayCount;
     updatePreview();
+    if (currentViewMode === "canvas") {
+      initCanvas();
+    }
     broadcast();
   };
 
@@ -326,8 +513,113 @@ function bindEvents() {
       document.querySelectorAll(".modal-overlay").forEach(function(m) {
         m.classList.remove("show");
       });
+      closeAddPopup();
+    }
+    if (e.key === "Control") {
+      isCtrlPressed = true;
+    }
+    // A key to open add popup in canvas mode
+    if (e.key === "a" || e.key === "A") {
+      if (currentViewMode === "canvas") {
+        e.preventDefault();
+        showAddPopup();
+      }
     }
   });
+
+  document.addEventListener("keyup", function(e) {
+    if (e.key === "Control") {
+      isCtrlPressed = false;
+    }
+  });
+
+  // Mode tabs
+  document.querySelectorAll(".mode-tab").forEach(function(tab) {
+    tab.onclick = function() {
+      switchViewMode(tab.dataset.mode);
+    };
+  });
+
+  // Canvas add content button
+  $("addContentBtn").onclick = function() {
+    showAddPopup();
+  };
+
+  $("canvasFileInput").onchange = function(e) {
+    var file = e.target.files[0];
+    if (file) {
+      uploadCanvasImage(file);
+    }
+  };
+
+  // Add popup event handlers
+  var popup = $("addPopup");
+
+  // Close popup when clicking overlay
+  popup.onclick = function(e) {
+    if (e.target === popup) {
+      closeAddPopup();
+    }
+  };
+
+  // Handle popup item clicks
+  document.querySelectorAll(".popup-item").forEach(function(item) {
+    item.onclick = function() {
+      var action = item.dataset.action;
+      handleAddAction(action);
+    };
+  });
+}
+
+// Popup Functions
+function showAddPopup() {
+  $("addPopup").classList.add("show");
+}
+
+function closeAddPopup() {
+  $("addPopup").classList.remove("show");
+}
+
+function handleAddAction(action) {
+  closeAddPopup();
+
+  if (action === "image-file") {
+    // Trigger file input
+    $("canvasFileInput").click();
+  } else if (action === "image-url") {
+    // Prompt for URL
+    var url = prompt("Enter image URL:");
+    if (url && url.trim()) {
+      if (ws && ws.readyState === 1) {
+        console.log("Sending image URL to ALL displays:", url.trim());
+        ws.send(JSON.stringify({
+          type: "canvas_upload",
+          url: url.trim()
+        }));
+      }
+    }
+  } else if (action === "solid-color") {
+    // Prompt for color
+    var color = prompt("Enter hex color (e.g., #ff0000):");
+    if (color && color.trim()) {
+      // Validate hex color format
+      var hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+      if (!hexPattern.test(color.trim())) {
+        alert("Invalid hex color format. Use format like #ff0000");
+        return;
+      }
+      if (ws && ws.readyState === 1) {
+        console.log("Sending solid color to ALL displays:", color.trim());
+        ws.send(JSON.stringify({
+          type: "canvas_content",
+          content: { type: "solid", color: color.trim() }
+        }));
+      }
+    }
+  } else if (action === "text") {
+    // Placeholder for text
+    alert("Text feature coming soon!");
+  }
 }
 
 // Initialize
