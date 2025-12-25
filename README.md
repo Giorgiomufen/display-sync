@@ -20,8 +20,10 @@ Open http://localhost:3000/
 
 ## Features
 
-- **Scenes**: Gradient, Waves, Particles, Matrix, Solid, Text
+- **Scenes**: None, Gradient, Waves, Particles, Matrix, Solid, Text, Image
+- **Canvas Mode**: Arrange displays spatially, span content across them like a video wall
 - **Custom HTML**: Broadcast any HTML/CSS/JS to displays
+- **Color Picker**: Blender-style wheel with RGB/HSV/HEX tabs and draggable sliders
 - **Real-time sync**: WebSocket-based instant updates
 - **LAN support**: Access from any device on same network
 
@@ -38,16 +40,20 @@ display-sync/
 └── custom/              # Add custom HTML here
 ```
 
-## Roadmap
+## Canvas Mode
 
-**Canvas mode** - Arrange displays spatially, span content across them like a video wall.
+Arrange displays spatially, span content across them like a video wall.
 
 ```
 ┌─────────┬─────────┬─────────┐
 │   D1    │   D2    │   D3    │
 └─────────┴─────────┴─────────┘
-      ↑ drop image/video ↑
+      ↑ drag elements here ↑
 ```
+
+- Add rectangles and images to the canvas
+- Each display shows its portion based on x/y offset
+- Drag to position, resize with handles
 
 ## LAN Access
 
