@@ -3,9 +3,11 @@
 import asyncio
 import json
 import socket
+import sys
 import threading
 import time
 import uuid
+from collections import deque
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs
@@ -23,6 +25,22 @@ BASE_DIR = Path(__file__).parent
 CUSTOM_DIR = BASE_DIR / "custom"
 CANVAS_DIR = BASE_DIR / "canvas"
 SCENES_DIR = BASE_DIR / "scenes"
+
+# Log buffer for piping to control panel
+log_buffer = deque(maxlen=50)
+log_queue = asyncio.Queue() if hasattr(asyncio, 'Queue') else None
+
+
+def server_log(msg):
+    """Print to stdout and queue for websocket broadcast."""
+    print(msg, flush=True)
+    log_buffer.append(msg)
+    # Queue for async broadcast (will be processed by log broadcaster)
+    try:
+        if log_queue:
+            log_queue.put_nowait(msg)
+    except:
+        pass
 
 
 class State:
@@ -175,11 +193,20 @@ async def broadcast_to(client_type, message):
                 pass
 
 
+async def log_broadcaster():
+    """Background task to broadcast logs to control panels."""
+    global log_queue
+    log_queue = asyncio.Queue()
+    while True:
+        msg = await log_queue.get()
+        await broadcast_to("control", {"type": "server_log", "message": msg})
+
+
 async def scene_sync_timeout(scene_id, timeout):
     """Force show scene after timeout if not all displays ready."""
     await asyncio.sleep(timeout)
     if pending_scene["id"] == scene_id:
-        print(f"[SYNC] Timeout - forcing show_scene for {scene_id}")
+        server_log("[SYNC] Timeout - forcing show_scene")
         await broadcast_to("display", {"type": "show_scene", "sceneId": scene_id})
         await broadcast_to("control", {"type": "sync_status", "status": "synced"})
         pending_scene["id"] = None
@@ -195,7 +222,7 @@ async def handle_client(websocket):
         async for message in websocket:
             data = json.loads(message)
             msg_type = data.get("type")
-            print(f"[MSG] {msg_type} from {client_info.get('type', 'unknown')}")
+            server_log(f"[MSG] {msg_type} from {client_info.get('type', 'unknown')}")
 
             if msg_type == "register_control":
                 client_info["type"] = "control"
@@ -207,6 +234,9 @@ async def handle_client(websocket):
                     "lanIP": get_local_ip(),
                     "httpPort": PORT_HTTP
                 }))
+                # Send log backlog
+                for log in log_buffer:
+                    await websocket.send(json.dumps({"type": "server_log", "message": log}))
 
             elif msg_type == "register_display":
                 display_id = int(data.get("displayId", 1))
@@ -236,7 +266,7 @@ async def handle_client(websocket):
                         pending_scene["id"] = scene_id
                         pending_scene["ready"] = set()
                         pending_scene["expected"] = set(connected)
-                        print(f"[SYNC] Scene change: {new_state['scene']}, expecting {connected}")
+                        server_log(f"[SYNC] Scene: {new_state['scene']}, waiting for {connected}")
 
                 msg = {"type": "state_update", "state": state.to_dict()}
                 if scene_id:
@@ -382,7 +412,7 @@ async def handle_client(websocket):
                     pending_scene["ready"].add(display_id)
                     ready_count = len(pending_scene["ready"])
                     total_count = len(pending_scene["expected"])
-                    print(f"[SYNC] Display {display_id} ready. {ready_count}/{total_count}")
+                    server_log(f"[SYNC] Display {display_id} ready ({ready_count}/{total_count})")
                     # Update control panel
                     await broadcast_to("control", {
                         "type": "sync_status",
@@ -392,7 +422,7 @@ async def handle_client(websocket):
                     })
                     # Check if all displays are ready
                     if pending_scene["ready"] >= pending_scene["expected"]:
-                        print(f"[SYNC] All displays ready, broadcasting show_scene")
+                        server_log("[SYNC] All ready - showing scene")
                         await broadcast_to("display", {"type": "show_scene", "sceneId": scene_id})
                         await broadcast_to("control", {"type": "sync_status", "status": "synced"})
                         pending_scene["id"] = None
@@ -586,6 +616,9 @@ async def main():
 """)
 
     threading.Thread(target=run_http_server, daemon=True).start()
+
+    # Start log broadcaster
+    asyncio.create_task(log_broadcaster())
 
     async with websockets.serve(handle_client, "0.0.0.0", PORT_WS, max_size=50*1024*1024):
         await asyncio.Future()

@@ -789,6 +789,10 @@ function connect() {
       }
     }
 
+    if (msg.type === "server_log") {
+      addLog(msg.message, msg.category);
+    }
+
     if (msg.type === "image_uploaded" && msg.url) {
       if (pendingImageElement) {
         addElement("image", { src: msg.url, w: pendingImageElement.w, h: pendingImageElement.h });
@@ -1024,6 +1028,21 @@ function handleAddAction(action) {
   } else if (action === "text") {
     // Placeholder for text
     alert("Text feature coming soon!");
+  }
+}
+
+// Sidebar Log
+function addLog(message, category) {
+  var body = $("logBody");
+  if (!body) return;
+  var entry = document.createElement("div");
+  entry.className = "log-entry " + (category || "");
+  entry.textContent = message;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+  // Limit to 50 entries
+  while (body.children.length > 50) {
+    body.removeChild(body.firstChild);
   }
 }
 

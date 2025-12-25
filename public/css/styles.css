@@ -1049,3 +1049,25 @@ body.display canvas {
 .hud-dot.on {
   background: #22c55e;
 }
+
+/* Sidebar Log */
+.sidebar-log {
+  height: 100px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.6rem;
+  line-height: 1.4;
+}
+.log-entry {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 0;
+}
+.log-entry.sync { color: #fbbf24; }
+.log-entry.msg { color: #60a5fa; }
+.log-entry.error { color: #ef4444; }
