@@ -15,7 +15,7 @@ document.getElementById("label").textContent = "D" + displayId;
 var ws = null;
 var state = {
   mode: "builtin",
-  scene: "gradient",
+  scene: "none",
   color: "#3b82f6",
   speed: 1,
   intensity: 1,
@@ -25,8 +25,13 @@ var state = {
   canvasMode: false,
   canvasLayout: {},
   canvasContent: null,
-  canvasElements: []
+  canvasElements: [],
+  imageUrl: "",
+  labelMode: "hidden"
 };
+var sceneImage = null;
+var sceneImageUrl = null;
+var labelTimeout = null;
 var time = 0;
 var particles = [];
 var matrixDrops = null;
@@ -185,6 +190,43 @@ function renderText() {
   content.textContent = state.text || "Hello";
 }
 
+function renderImage() {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (!state.imageUrl) return;
+
+  // Load image if URL changed
+  if (state.imageUrl !== sceneImageUrl) {
+    sceneImageUrl = state.imageUrl;
+    sceneImage = new Image();
+    var src = state.imageUrl;
+    if (src.startsWith("/")) {
+      src = window.location.protocol + "//" + window.location.hostname + ":3000" + src;
+    }
+    sceneImage.src = src;
+  }
+
+  if (sceneImage && sceneImage.complete && sceneImage.naturalWidth > 0) {
+    // Cover mode - fill screen
+    var imgRatio = sceneImage.width / sceneImage.height;
+    var canvasRatio = canvas.width / canvas.height;
+    var w, h, x, y;
+    if (imgRatio > canvasRatio) {
+      h = canvas.height;
+      w = sceneImage.width * (canvas.height / sceneImage.height);
+      x = (canvas.width - w) / 2;
+      y = 0;
+    } else {
+      w = canvas.width;
+      h = sceneImage.height * (canvas.width / sceneImage.width);
+      x = 0;
+      y = (canvas.height - h) / 2;
+    }
+    ctx.drawImage(sceneImage, x, y, w, h);
+  }
+}
+
 function renderCustomHtml() {
   if (state.customHtml !== lastCustomHtml) {
     lastCustomHtml = state.customHtml;
@@ -217,11 +259,16 @@ function renderCanvas() {
       // Get or load image
       if (!elementImages[el.src]) {
         var img = new Image();
-        img.src = el.src;
+        // Convert relative URL to absolute
+        var src = el.src;
+        if (src.startsWith("/")) {
+          src = window.location.protocol + "//" + window.location.hostname + ":3000" + src;
+        }
+        img.src = src;
         elementImages[el.src] = img;
       }
       var img = elementImages[el.src];
-      if (img.complete) {
+      if (img.complete && img.naturalWidth > 0) {
         ctx.drawImage(img, x, y, el.w, el.h);
       }
     }
@@ -256,12 +303,17 @@ function render() {
     }
 
     switch (state.scene) {
+      case "none":
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        break;
       case "gradient": renderGradient(); break;
       case "waves": renderWaves(); break;
       case "particles": renderParticles(); break;
       case "matrix": renderMatrix(); break;
       case "solid": renderSolid(); break;
       case "text": renderText(); break;
+      case "image": renderImage(); break;
       default: renderGradient();
     }
   }
@@ -286,7 +338,10 @@ function connect() {
   ws.onmessage = function(e) {
     var msg = JSON.parse(e.data);
     if (msg.type === "init" || msg.type === "state_update") {
-      if (msg.state) Object.assign(state, msg.state);
+      if (msg.state) {
+        Object.assign(state, msg.state);
+        updateLabel();
+      }
     }
   };
 }
@@ -300,6 +355,34 @@ document.body.addEventListener("dblclick", function() {
   }
 });
 
+// Label visibility
+function updateLabel() {
+  var label = document.getElementById("label");
+  var dot = document.getElementById("dot");
+  if (state.labelMode === "hidden") {
+    label.style.display = "none";
+    dot.style.display = "none";
+  } else if (state.labelMode === "always") {
+    label.style.display = "";
+    dot.style.display = "";
+  } else {
+    // "interact" - controlled by showLabelTemporarily
+  }
+}
+
+function showLabelTemporarily() {
+  if (state.labelMode !== "interact") return;
+  var label = document.getElementById("label");
+  var dot = document.getElementById("dot");
+  label.style.display = "";
+  dot.style.display = "";
+  clearTimeout(labelTimeout);
+  labelTimeout = setTimeout(function() {
+    label.style.display = "none";
+    dot.style.display = "none";
+  }, 3000);
+}
+
 // Auto-hide cursor
 var cursorTimer;
 document.body.addEventListener("mousemove", function() {
@@ -308,8 +391,13 @@ document.body.addEventListener("mousemove", function() {
   cursorTimer = setTimeout(function() {
     document.body.style.cursor = "none";
   }, 2000);
+  showLabelTemporarily();
 });
+
+document.body.addEventListener("click", showLabelTemporarily);
+document.body.addEventListener("keydown", showLabelTemporarily);
 
 // Start
 connect();
 render();
+updateLabel();

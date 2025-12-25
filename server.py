@@ -28,7 +28,7 @@ class State:
     """Global application state."""
     def __init__(self):
         self.mode = "builtin"  # "builtin" or "custom"
-        self.scene = "gradient"
+        self.scene = "none"
         self.color = "#3b82f6"
         self.speed = 1.0
         self.intensity = 1.0
@@ -40,6 +40,8 @@ class State:
         self.canvas_layout = {}
         self.canvas_content = None
         self.canvas_elements = []
+        self.image_url = ""
+        self.label_mode = "hidden"
 
     def to_dict(self):
         return {
@@ -55,7 +57,9 @@ class State:
             "canvasMode": self.canvas_mode,
             "canvasLayout": self.canvas_layout,
             "canvasContent": self.canvas_content,
-            "canvasElements": self.canvas_elements
+            "canvasElements": self.canvas_elements,
+            "imageUrl": self.image_url,
+            "labelMode": self.label_mode
         }
 
     def update(self, data):
@@ -72,6 +76,8 @@ class State:
         if "canvasLayout" in data: self.canvas_layout = data["canvasLayout"]
         if "canvasContent" in data: self.canvas_content = data["canvasContent"]
         if "canvasElements" in data: self.canvas_elements = data["canvasElements"]
+        if "imageUrl" in data: self.image_url = data["imageUrl"]
+        if "labelMode" in data: self.label_mode = data["labelMode"]
 
 
 state = State()
@@ -174,6 +180,7 @@ async def handle_client(websocket):
         async for message in websocket:
             data = json.loads(message)
             msg_type = data.get("type")
+            print(f"[MSG] {msg_type} from {client_info.get('type', 'unknown')}")
 
             if msg_type == "register_control":
                 client_info["type"] = "control"
@@ -278,6 +285,55 @@ async def handle_client(websocket):
                     "type": "state_update",
                     "state": state.to_dict()
                 })
+
+            elif msg_type == "upload_image":
+                try:
+                    import base64
+                    CANVAS_DIR.mkdir(exist_ok=True)
+                    image_data = data.get("image", "")
+                    print(f"[UPLOAD] Received image data: {len(image_data)} chars")
+                    if image_data:
+                        ext = ".png"
+                        if image_data.startswith("data:image"):
+                            header, image_data = image_data.split(",", 1)
+                            if "jpeg" in header or "jpg" in header: ext = ".jpg"
+                            elif "gif" in header: ext = ".gif"
+                            elif "webp" in header: ext = ".webp"
+                        file_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}{ext}"
+                        image_path = CANVAS_DIR / file_id
+                        image_path.write_bytes(base64.b64decode(image_data))
+                        url = f"/canvas/{file_id}"
+                        print(f"[UPLOAD] Saved to {image_path}, URL: {url}")
+                        await websocket.send(json.dumps({
+                            "type": "image_uploaded",
+                            "url": url
+                        }))
+                        print(f"[UPLOAD] Response sent")
+                except Exception as e:
+                    import traceback
+                    print(f"[UPLOAD ERROR] {e}")
+                    traceback.print_exc()
+
+            elif msg_type == "upload_scene_image":
+                try:
+                    import base64
+                    CANVAS_DIR.mkdir(exist_ok=True)
+                    image_data = data.get("image", "")
+                    if image_data:
+                        ext = ".png"
+                        if image_data.startswith("data:image"):
+                            header, image_data = image_data.split(",", 1)
+                            if "jpeg" in header or "jpg" in header: ext = ".jpg"
+                        file_id = f"scene_{int(time.time())}_{uuid.uuid4().hex[:6]}{ext}"
+                        image_path = CANVAS_DIR / file_id
+                        image_path.write_bytes(base64.b64decode(image_data))
+                        url = f"/canvas/{file_id}"
+                        await websocket.send(json.dumps({
+                            "type": "scene_image_uploaded",
+                            "url": url
+                        }))
+                except Exception as e:
+                    print(f"[SCENE IMAGE ERROR] {e}")
 
             elif msg_type == "canvas_elements":
                 state.canvas_elements = data.get("elements", [])
@@ -462,7 +518,7 @@ async def main():
 
     threading.Thread(target=run_http_server, daemon=True).start()
 
-    async with websockets.serve(handle_client, "0.0.0.0", PORT_WS):
+    async with websockets.serve(handle_client, "0.0.0.0", PORT_WS, max_size=50*1024*1024):
         await asyncio.Future()
 
 

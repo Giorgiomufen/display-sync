@@ -25,8 +25,16 @@
       </div>
 
       <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);">
-        <div style="font-size:0.65rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+        <div style="font-size:0.65rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:8px;">
           Displays: <input type="number" class="number-input" id="displayCount" min="1" value="3">
+        </div>
+        <div style="font-size:0.65rem;color:var(--text-muted);">
+          <label>Display label:</label>
+          <select id="labelMode" style="width:100%;margin-top:4px;padding:4px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:4px;">
+            <option value="always">Always visible</option>
+            <option value="interact">On interaction</option>
+            <option value="hidden" selected>Hidden</option>
+          </select>
         </div>
       </div>
     </div>
@@ -109,6 +117,7 @@
             <button class="btn" id="addRectBtn">+ Rectangle</button>
             <button class="btn" id="addImageBtn">+ Image</button>
             <input type="file" id="canvasFileInput" accept="image/*" style="display:none;">
+            <input type="file" id="sceneImageInput" accept="image/*" style="display:none;">
             <span class="toolbar-info" id="cursorInfo">x: 0, y: 0</span>
           </div>
         </div>
@@ -190,6 +199,37 @@
     </div>
   </div>
 
+  <!-- Color Picker Popup -->
+  <div class="color-picker-overlay" id="colorPickerOverlay">
+    <div class="color-picker-popup">
+      <div id="colorWheelContainer"></div>
+      <div class="color-picker-right">
+        <div class="color-preview-box" id="colorPreviewBox"></div>
+        <div class="color-tabs">
+          <button class="color-tab active" data-tab="rgb">RGB</button>
+          <button class="color-tab" data-tab="hsv">HSV</button>
+          <button class="color-tab" data-tab="hex">HEX</button>
+        </div>
+        <div class="color-tab-content active" id="tab-rgb">
+          <div class="color-slider-row"><span>R</span><div class="color-slider" id="sliderR"></div><input type="number" id="valR" min="0" max="255"></div>
+          <div class="color-slider-row"><span>G</span><div class="color-slider" id="sliderG"></div><input type="number" id="valG" min="0" max="255"></div>
+          <div class="color-slider-row"><span>B</span><div class="color-slider" id="sliderB"></div><input type="number" id="valB" min="0" max="255"></div>
+          <div class="color-slider-row"><span>A</span><div class="color-slider" id="sliderA_rgb"></div><input type="number" id="valA_rgb" min="0" max="100" value="100"></div>
+        </div>
+        <div class="color-tab-content" id="tab-hsv">
+          <div class="color-slider-row"><span>H</span><div class="color-slider" id="sliderH"></div><input type="number" id="valH" min="0" max="360"></div>
+          <div class="color-slider-row"><span>S</span><div class="color-slider" id="sliderS"></div><input type="number" id="valS" min="0" max="100"></div>
+          <div class="color-slider-row"><span>V</span><div class="color-slider" id="sliderV"></div><input type="number" id="valV" min="0" max="100"></div>
+        </div>
+        <div class="color-tab-content" id="tab-hex">
+          <div class="color-hex-row"><input type="text" id="hexInput" maxlength="7" placeholder="#000000"></div>
+          <div class="color-slider-row"><span>A</span><div class="color-slider" id="sliderA_hex"></div><input type="number" id="valA_hex" min="0" max="100" value="100"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
   <script src="js/control.js"></script>
 </body>
 </html>
