@@ -37,7 +37,10 @@ display-sync/
 │   ├── display.html
 │   ├── css/styles.css
 │   └── js/
-└── custom/              # Add custom HTML here
+├── scenes/
+│   ├── default/         # Built-in scenes
+│   └── custom/          # Your custom scenes (gitignored)
+└── custom/              # Saved HTML library
 ```
 
 ## Canvas Mode
