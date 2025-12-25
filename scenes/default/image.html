@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; }
+    body {
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      overflow: hidden;
+    }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    img.loaded { display: block; }
+  </style>
+</head>
+<body>
+<img id="img">
+<script>
+var img = document.getElementById('img');
+
+window.addEventListener('message', function(e) {
+  if (e.data.imageUrl) {
+    var src = e.data.imageUrl;
+    if (src.startsWith('/')) {
+      src = window.location.protocol + '//' + window.location.hostname + ':3000' + src;
+    }
+    img.src = src;
+    img.onload = function() { img.classList.add('loaded'); };
+  }
+});
+</script>
+</body>
+</html>

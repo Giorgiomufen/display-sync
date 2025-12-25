@@ -1,6 +1,7 @@
 # User content
 custom/
 canvas/
+scenes/custom/
 
 # Python
 __pycache__/

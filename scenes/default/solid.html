@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { width: 100vw; height: 100vh; background: var(--color, #3b82f6); }
+  </style>
+</head>
+<body>
+<script>
+  window.addEventListener('message', function(e) {
+    if (e.data.color) document.body.style.background = e.data.color;
+  });
+</script>
+</body>
+</html>

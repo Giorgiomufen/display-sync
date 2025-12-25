@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      overflow: hidden;
+    }
+    #text {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 8vw;
+      font-weight: bold;
+      color: #3b82f6;
+      text-align: center;
+      text-shadow: 0 0 50px currentColor;
+      width: 90%;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+<div id="text">Hello</div>
+<script>
+var color = '#3b82f6';
+
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16)
+  };
+}
+
+function update() {
+  var c = hexToRgb(color);
+  document.body.style.background = 'rgb(' + Math.floor(c.r*0.1) + ',' + Math.floor(c.g*0.1) + ',' + Math.floor(c.b*0.1) + ')';
+  document.getElementById('text').style.color = color;
+}
+
+window.addEventListener('message', function(e) {
+  if (e.data.color) { color = e.data.color; update(); }
+  if (e.data.text !== undefined) document.getElementById('text').textContent = e.data.text || 'Hello';
+});
+
+update();
+</script>
+</body>
+</html>

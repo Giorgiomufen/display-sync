@@ -22,6 +22,7 @@ PORT_WS = 3001
 BASE_DIR = Path(__file__).parent
 CUSTOM_DIR = BASE_DIR / "custom"
 CANVAS_DIR = BASE_DIR / "canvas"
+SCENES_DIR = BASE_DIR / "scenes"
 
 
 class State:
@@ -441,16 +442,21 @@ class HTTPHandler(BaseHTTPRequestHandler):
             self._serve_file(public / "display.html", "text/html")
         elif self.path == "/api/library":
             self._json_response(get_library())
+        elif self.path.startswith("/scenes/"):
+            # Serve scene files from scenes/default or scenes/custom
+            rel_path = self.path.replace("/scenes/", "")
+            file_path = SCENES_DIR / rel_path
+            if file_path.exists() and file_path.is_file():
+                self._serve_file(file_path, self._get_content_type(file_path))
+            else:
+                self.send_error(404)
         elif self.path.startswith("/canvas/"):
             # Serve canvas images
             file_name = self.path.replace("/canvas/", "")
             file_path = CANVAS_DIR / file_name
-            print(f"[DEBUG] Canvas file request: {file_name} -> {file_path}")
             if file_path.exists() and file_path.is_file():
-                print(f"[DEBUG] Serving canvas file: {file_path}")
                 self._serve_file(file_path, self._get_content_type(file_path))
             else:
-                print(f"[ERROR] Canvas file not found: {file_path}")
                 self.send_error(404)
         else:
             file_path = public / self.path.lstrip("/")
@@ -499,6 +505,7 @@ async def main():
     """Main entry point."""
     CUSTOM_DIR.mkdir(exist_ok=True)
     CANVAS_DIR.mkdir(exist_ok=True)
+    (SCENES_DIR / "custom").mkdir(parents=True, exist_ok=True)
     ip = get_local_ip()
 
     print(f"""
