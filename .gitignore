@@ -2,9 +2,9 @@
 custom/
 canvas/
 
-# Internal docs
-docs/
-
 # Python
 __pycache__/
 *.pyc
+
+# Optional: internal docs
+# docs/
