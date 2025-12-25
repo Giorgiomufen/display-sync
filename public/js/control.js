@@ -778,6 +778,17 @@ function connect() {
       buildSceneGrid();
     }
 
+    if (msg.type === "sync_status") {
+      var el = $("syncStatus");
+      if (msg.status === "syncing") {
+        el.className = "sync-status syncing";
+        el.textContent = "Syncing " + msg.ready + "/" + msg.total;
+      } else if (msg.status === "synced") {
+        el.className = "sync-status synced";
+        el.textContent = "Synced";
+      }
+    }
+
     if (msg.type === "image_uploaded" && msg.url) {
       if (pendingImageElement) {
         addElement("image", { src: msg.url, w: pendingImageElement.w, h: pendingImageElement.h });

@@ -43,6 +43,7 @@ class State:
         self.canvas_elements = []
         self.image_url = ""
         self.label_mode = "hidden"
+        self.scene_show_time = 0
 
     def to_dict(self):
         return {
@@ -60,7 +61,8 @@ class State:
             "canvasContent": self.canvas_content,
             "canvasElements": self.canvas_elements,
             "imageUrl": self.image_url,
-            "labelMode": self.label_mode
+            "labelMode": self.label_mode,
+            "sceneShowTime": self.scene_show_time
         }
 
     def update(self, data):
@@ -83,6 +85,7 @@ class State:
 
 state = State()
 clients = {}
+pending_scene = {"id": None, "ready": set(), "expected": set()}
 
 
 def get_local_ip():
@@ -172,6 +175,17 @@ async def broadcast_to(client_type, message):
                 pass
 
 
+async def scene_sync_timeout(scene_id, timeout):
+    """Force show scene after timeout if not all displays ready."""
+    await asyncio.sleep(timeout)
+    if pending_scene["id"] == scene_id:
+        print(f"[SYNC] Timeout - forcing show_scene for {scene_id}")
+        await broadcast_to("display", {"type": "show_scene", "sceneId": scene_id})
+        await broadcast_to("control", {"type": "sync_status", "status": "synced"})
+        pending_scene["id"] = None
+        pending_scene["ready"] = set()
+
+
 async def handle_client(websocket):
     """Handle WebSocket client connection."""
     client_info = {"type": None, "displayId": None}
@@ -209,11 +223,35 @@ async def handle_client(websocket):
                 })
 
             elif msg_type == "update_state":
-                state.update(data.get("state", {}))
-                await broadcast_to("display", {
-                    "type": "state_update",
-                    "state": state.to_dict()
-                })
+                new_state = data.get("state", {})
+                old_scene = state.scene
+                state.update(new_state)
+
+                # Check if scene changed - initiate sync
+                scene_id = None
+                if "scene" in new_state and new_state["scene"] != old_scene:
+                    connected = get_connected_displays()
+                    if len(connected) > 0:
+                        scene_id = f"{new_state['scene']}_{int(time.time()*1000)}"
+                        pending_scene["id"] = scene_id
+                        pending_scene["ready"] = set()
+                        pending_scene["expected"] = set(connected)
+                        print(f"[SYNC] Scene change: {new_state['scene']}, expecting {connected}")
+
+                msg = {"type": "state_update", "state": state.to_dict()}
+                if scene_id:
+                    msg["sceneId"] = scene_id
+                    # Timeout: show scene after 2s even if not all ready
+                    asyncio.create_task(scene_sync_timeout(scene_id, 2.0))
+                    # Notify control panel of sync start
+                    await broadcast_to("control", {
+                        "type": "sync_status",
+                        "status": "syncing",
+                        "ready": 0,
+                        "total": len(pending_scene["expected"])
+                    })
+
+                await broadcast_to("display", msg)
                 await broadcast_to("control", {
                     "type": "state_update",
                     "state": state.to_dict()
@@ -335,6 +373,30 @@ async def handle_client(websocket):
                         }))
                 except Exception as e:
                     print(f"[SCENE IMAGE ERROR] {e}")
+
+            elif msg_type == "scene_ready":
+                # Display reports scene loaded
+                scene_id = data.get("sceneId")
+                display_id = client_info.get("displayId")
+                if scene_id and display_id and scene_id == pending_scene["id"]:
+                    pending_scene["ready"].add(display_id)
+                    ready_count = len(pending_scene["ready"])
+                    total_count = len(pending_scene["expected"])
+                    print(f"[SYNC] Display {display_id} ready. {ready_count}/{total_count}")
+                    # Update control panel
+                    await broadcast_to("control", {
+                        "type": "sync_status",
+                        "status": "syncing",
+                        "ready": ready_count,
+                        "total": total_count
+                    })
+                    # Check if all displays are ready
+                    if pending_scene["ready"] >= pending_scene["expected"]:
+                        print(f"[SYNC] All displays ready, broadcasting show_scene")
+                        await broadcast_to("display", {"type": "show_scene", "sceneId": scene_id})
+                        await broadcast_to("control", {"type": "sync_status", "status": "synced"})
+                        pending_scene["id"] = None
+                        pending_scene["ready"] = set()
 
             elif msg_type == "canvas_elements":
                 state.canvas_elements = data.get("elements", [])

@@ -155,6 +155,29 @@ body.control {
   align-items: center;
 }
 
+.sync-status {
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: none;
+  align-items: center;
+  gap: 5px;
+}
+.sync-status.syncing {
+  display: flex;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+.sync-status.synced {
+  display: flex;
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  animation: fadeOut 1.5s ease-out 1s forwards;
+}
+@keyframes fadeOut {
+  to { opacity: 0; }
+}
+
 .badge {
   background: var(--surface);
   padding: 5px 10px;

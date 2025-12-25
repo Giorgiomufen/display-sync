@@ -43,28 +43,54 @@ resize();
 window.addEventListener("resize", resize);
 
 // Load scene from file
-function loadScene(sceneName) {
-  // Try default folder first, then custom
+var pendingSceneId = null;
+
+function loadScene(sceneName, sceneId) {
+  console.log("[SCENE] Loading:", sceneName, "sceneId:", sceneId);
+
   var src = "/scenes/default/" + sceneName + ".html";
 
-  if (currentSceneSrc === src) {
-    // Same scene, just update params
+  if (currentSceneSrc === src && !sceneId) {
+    console.log("[SCENE] Same scene, updating params");
     sendStateToScene();
     return;
   }
 
+  console.log("[SCENE] Loading from:", src);
   currentSceneSrc = src;
+
+  // Hide current content while loading
   canvas.style.display = "none";
   document.getElementById("textOverlay").style.display = "none";
+
+  // Create iframe but keep container hidden until sync
   customContainer.innerHTML = "";
-  customContainer.classList.add("active");
+  customContainer.classList.remove("active");
 
   sceneIframe = document.createElement("iframe");
   sceneIframe.style.cssText = "width:100%;height:100%;border:none;";
   sceneIframe.src = src;
+
+  pendingSceneId = sceneId || null;
+
   sceneIframe.onload = function() {
+    console.log("[SCENE] Iframe loaded");
     sendStateToScene();
+
+    if (pendingSceneId) {
+      // Report ready to server, wait for show_scene
+      console.log("[SCENE] Reporting ready for:", pendingSceneId);
+      ws.send(JSON.stringify({ type: "scene_ready", sceneId: pendingSceneId }));
+    } else {
+      // No sync, show immediately
+      customContainer.classList.add("active");
+    }
   };
+
+  sceneIframe.onerror = function() {
+    console.log("[SCENE] Iframe error");
+  };
+
   customContainer.appendChild(sceneIframe);
 }
 
@@ -133,32 +159,42 @@ function renderCanvas() {
 // Main render loop
 var lastScene = "";
 var lastMode = "";
+var lastCustomHtml = "";
 
 function render() {
-  if (state.canvasMode) {
+  var currentMode = state.canvasMode ? "canvas" : (state.mode === "custom" && state.customHtml ? "custom" : "scene");
+
+  // Detect mode change - reset scene tracking
+  if (currentMode !== lastMode) {
+    lastScene = "";
+    lastCustomHtml = "";
+    currentSceneSrc = "";
+  }
+
+  if (currentMode === "canvas") {
     // Canvas mode - multi-display spanning
     canvas.style.display = "block";
     document.getElementById("textOverlay").style.display = "none";
     customContainer.classList.remove("active");
     customContainer.innerHTML = "";
-    currentSceneSrc = "";
     sceneIframe = null;
     renderCanvas();
-  } else if (state.mode === "custom" && state.customHtml) {
+  } else if (currentMode === "custom") {
     // Custom HTML mode
-    if (lastMode !== "custom") {
+    if (state.customHtml !== lastCustomHtml) {
       renderCustomHtml();
-      lastMode = "custom";
+      lastCustomHtml = state.customHtml;
     }
   } else {
     // Scene mode - load from file
-    lastMode = "scene";
+    // Only load here for non-synced cases (sync handled in ws.onmessage)
     if (state.scene !== lastScene) {
-      loadScene(state.scene);
+      loadScene(state.scene, null);
       lastScene = state.scene;
     }
   }
 
+  lastMode = currentMode;
   requestAnimationFrame(render);
 }
 
@@ -180,9 +216,22 @@ function connect() {
     var msg = JSON.parse(e.data);
     if (msg.type === "init" || msg.type === "state_update") {
       if (msg.state) {
+        var oldScene = state.scene;
         Object.assign(state, msg.state);
         updateLabel();
         sendStateToScene();
+        // If scene changed and we have a sceneId, load with sync
+        if (msg.sceneId && state.scene !== oldScene) {
+          loadScene(state.scene, msg.sceneId);
+          lastScene = state.scene;
+        }
+      }
+    } else if (msg.type === "show_scene") {
+      // Server says all displays ready - show now!
+      console.log("[SCENE] show_scene received:", msg.sceneId);
+      if (pendingSceneId === msg.sceneId) {
+        customContainer.classList.add("active");
+        pendingSceneId = null;
       }
     }
   };
