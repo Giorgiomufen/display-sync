@@ -6,5 +6,5 @@ canvas/
 __pycache__/
 *.pyc
 
-# Optional: internal docs
-# docs/
+# Internal docs
+docs/
