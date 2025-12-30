@@ -13,7 +13,8 @@ var SCENES = [
   { id: "text", icon: "Aa", name: "Text" },
   { id: "image", icon: "&#128247;", name: "Image" },
   { id: "audio", icon: "&#127925;", name: "Audio" },
-  { id: "glitch", icon: "&#9889;", name: "Glitch" }
+  { id: "glitch", icon: "&#9889;", name: "Glitch" },
+  { id: "terminal", icon: "&gt;_", name: "Terminal (bad)" }
 ];
 
 var COLORS = [
