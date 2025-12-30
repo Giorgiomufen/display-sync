@@ -11,7 +11,9 @@ var SCENES = [
   { id: "matrix", icon: "&#128223;", name: "Matrix" },
   { id: "solid", icon: "&#9724;", name: "Solid" },
   { id: "text", icon: "Aa", name: "Text" },
-  { id: "image", icon: "&#128247;", name: "Image" }
+  { id: "image", icon: "&#128247;", name: "Image" },
+  { id: "audio", icon: "&#127925;", name: "Audio" },
+  { id: "glitch", icon: "&#9889;", name: "Glitch" }
 ];
 
 var COLORS = [

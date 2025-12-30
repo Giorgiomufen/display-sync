@@ -20,7 +20,7 @@ Open http://localhost:3000/
 
 ## Features
 
-- **Scenes**: None, Gradient, Waves, Particles, Matrix, Solid, Text, Image
+- **Scenes**: None, Gradient, Waves, Particles, Matrix, Solid, Text, Image, Audio, Glitch
 - **Canvas Mode**: Arrange displays spatially, span content across them like a video wall
 - **Custom HTML**: Broadcast any HTML/CSS/JS to displays
 - **Color Picker**: Blender-style wheel with RGB/HSV/HEX tabs and draggable sliders
